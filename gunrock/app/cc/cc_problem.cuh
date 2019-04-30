@@ -7,9 +7,9 @@
 
 /**
  * @file
- * hello_problem.cuh
+ * cc_problem.cuh
  *
- * @brief GPU Storage management Structure for hello Problem Data
+ * @brief GPU Storage management Structure for Connected Components (CC) Problem Data
  */
 
 #pragma once
@@ -18,8 +18,7 @@
 
 namespace gunrock {
 namespace app {
-// <TODO> change namespace
-namespace hello {
+namespace cc {
 // </TODO>
 
 
