@@ -359,6 +359,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
                 }
             }
 
+            delete [] marker;
         } else { // num_gpus != 1
             
             // ============ INCOMPLETE TEMPLATE - MULTIGPU ============
