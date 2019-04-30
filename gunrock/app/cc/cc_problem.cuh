@@ -129,12 +129,17 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             if (target & util::DEVICE)
                 GUARD_CU(util::SetDevice(this->gpu_idx));
 
-            // <TODO> Release problem specific data, e.g.:
-            GUARD_CU(degrees.Release(target));
-            GUARD_CU(visited.Release(target));
+            component_ids.Release();
+            masks        .Release();
+            marks        .Release();
+            froms        .Release();
+            tos          .Release();
+            vertex_flag  .Release();
+            edge_flag    .Release();
+            vertex_associate_ins.Release();
             // </TODO>
 
-            GUARD_CU(BaseDataSlice ::Release(target));
+            GUARD_CU(BaseDataSlice::Release(target));
             return retval;
         }
 
