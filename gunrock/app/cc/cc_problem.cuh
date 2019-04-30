@@ -144,7 +144,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         }
 
         /**
-         * @brief initializing sssp-specific data on each gpu
+         * @brief initialize CC-specific data on each gpu
          * @param     sub_graph   Sub graph on the GPU.
          * @param[in] gpu_idx     GPU device index
          * @param[in] target      Targeting device location
@@ -153,18 +153,54 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
          */
         cudaError_t Init(
             GraphT        &sub_graph,
-            int            num_gpus,
+            int            num_gpus,    // SDP can we ditch at have a different Init for num_gpus > 1?
             int            gpu_idx,
-            util::Location target,
+            util::Location target,      // SDP is this parameter really needed?
             ProblemFlag    flag)
         {
             cudaError_t retval  = cudaSuccess;
 
             GUARD_CU(BaseDataSlice::Init(sub_graph, num_gpus, gpu_idx, target, flag));
 
-            // <TODO> allocate problem specific data here, e.g.:
-            GUARD_CU(degrees.Allocate(sub_graph.nodes, target));
-            GUARD_CU(visited.Allocate(sub_graph.nodes, target));
+	        GUARD_CU(component_ids         .Allocate(sub_graph.nodes, util::DEVICE));
+	        GUARD_CU(masks                 .Allocate(sub_graph.nodes, util::DEVICE));
+            GUARD_CU(marks                 .Allocate(sub_graph.edge, util::DEVICE));	        
+	        GUARD_CU(vertex_flag           .Allocate(1, util::HOST | util::DEVICE));
+	        GUARD_CU(edge_flag             .Allocate(1, util::HOST | util::DEVICE));
+	        GUARD_CU(vertex_associate_ins  .Allocate(num_gpus, util::HOST | util::DEVICE));
+
+            //
+            // Construct coo from/to edge list from row_offsets and column_indices
+            //
+            // SDP -- can probably avoid getting COO this way
+            GUARD_CU(froms.Allocate(sub_graph.edges, util::HOST | util::DEVICE));
+            auto col_idx_ptr = sub_graph.column_indices.GetPointer(util::DEVICE);
+            GUARD_CU(tos.SetPointer(col_idx_ptr, sub_graph.edges, util::DEVICE));
+
+            for (VertexId node=0; node < sub_graph.nodes; node++)
+            {
+                SizeT start_edge = sub_graph.row_offsets[node  ]; // SDP row start
+                SizeT end_edge   = sub_graph.row_offsets[node+1]; // SDP see up to this number of items in row
+                if (TO_TRACK)
+                if (util::to_track(node))
+                    printf("node %lld @ gpu %d : %lld -> %lld\n", 
+                        (long long) node, gpu_idx, 
+                        (long long) start_edge, 
+                        (long long) end_edge);
+                for (SizeT edge = start_edge; edge < end_edge; ++edge) // SDP walk across the row
+                {
+                    froms[edge] = node;
+                    //tos  [edge] = graph->column_indices[edge];
+                    if (TO_TRACK)
+                    if (util::to_track(node) || util::to_track(tos[edge]))
+                        printf("edge %lld @ gpu %d : %lld -> %lld\n", 
+                            (long long)edge, gpu_idx, 
+                            (long long)froms[edge], 
+                            (long long) tos[edge]);
+                }
+            }
+            GUARD_CU(froms.Move(util::HOST, util::DEVICE));
+            GUARD_CU(froms.Release(util::HOST));
             // </TODO>
 
             if (target & util::DEVICE) {
