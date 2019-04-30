@@ -311,13 +311,14 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
     }
     
     /**
-     * @brief Copy result distancess computed on GPUs back to host-side arrays.
-...
+     * @brief Copy result component ids computed on the GPU back to a host-side vector.
+...  *
+     * @param[out] h_component_ids host-side vector to store computed component ids.
+     *
      * \return     cudaError_t Error message(s), if any
      */
     cudaError_t Extract(
-        // <TODO> problem specific data to extract
-        ValueT *h_degrees,
+        VertexId *h_component_ids,
         // </TODO>
         util::Location target = util::DEVICE)
     {
@@ -331,18 +332,33 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             if (target == util::DEVICE) {
                 GUARD_CU(util::SetDevice(this->gpu_idx[0]));
 
-                // <TODO> extract the results from single GPU, e.g.:
-                GUARD_CU(data_slice.degrees.SetPointer(h_degrees, nodes, util::HOST));
-                GUARD_CU(data_slice.degrees.Move(util::DEVICE, util::HOST));
+                GUARD_CU(data_slice.component_ids.SetPointer(h_component_ids));
+                GUARD_CU(data_slice.component_ids.Move(util::DEVICE, util::HOST));
+
                 // </TODO>
-            } else if (target == util::HOST) {
-                // <TODO> extract the results from single CPU, e.g.:
-                GUARD_CU(data_slice.degrees.ForEach(h_degrees,
-                   []__host__ __device__ (const ValueT &device_val, ValueT &host_val){
-                       host_val = device_val;
-                   }, nodes, util::HOST));
+            } else if (target == util::HOST) { // SDP: data is on CPU
+                GUARD_CU(data_slice.component_ids.ForEach(h_component_ids,
+                    []__host__ __device__ (const VertexId &device_component_id, VertexId &host_component_id){
+                        host_component_id = device_component_id;
+                    }, nodes, util::HOST));
                 // </TODO>
             }
+
+            // SDP count the number of components
+
+            int *marker = new int[nodes];
+            assert(null_ptr != marker);
+            memset(marker, 0, sizeof(int) * this->nodes);
+
+            num_components=0;
+            for (int node=0; node < nodes; node++) {
+                if (marker[h_component_ids[node]] == 0) {
+                    num_components++;
+                    //printf("%d\t ",node);
+                    marker[h_component_ids[node]]=1;
+                }
+            }
+
         } else { // num_gpus != 1
             
             // ============ INCOMPLETE TEMPLATE - MULTIGPU ============
