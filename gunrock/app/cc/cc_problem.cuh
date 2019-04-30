@@ -96,9 +96,20 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
          */
         DataSlice() : BaseDataSlice()
         {
-            // <TODO> name of the problem specific arrays:
-            degrees.SetName("degrees");
-            visited.SetName("visited");
+            component_ids.SetName("component_ids");
+            masks        .SetName("masks"        );
+            marks        .SetName("marks"        );
+            froms        .SetName("froms"        );
+            tos          .SetName("tos"          );
+            vertex_flag  .SetName("vertex_flag"  );
+            edge_flag    .SetName("edge_flag"    );
+            vertex_associate_ins.SetName("vertex_associate_ins");
+            turn          = 0;
+            has_change    = true;
+            previous_change = true;
+            scanned_queue_computed = false;
+            temp_vertex_out = NULL;
+            temp_comp_out = NULL;
             // </TODO>
         }
 
