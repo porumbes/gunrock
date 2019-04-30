@@ -325,73 +325,41 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         cudaError_t retval = cudaSuccess;
         SizeT nodes = this -> org_graph -> nodes;
 
-        if (this-> num_gpus == 1) {
-            auto &data_slice = data_slices[0][0];
+        // SDP: Assume only one gpu for now
+        auto &data_slice = data_slices[0][0];
 
-            // Set device
-            if (target == util::DEVICE) {
-                GUARD_CU(util::SetDevice(this->gpu_idx[0]));
+        // Set device
+        if (target == util::DEVICE) {
+            GUARD_CU(util::SetDevice(this->gpu_idx[0]));
 
-                GUARD_CU(data_slice.component_ids.SetPointer(h_component_ids));
-                GUARD_CU(data_slice.component_ids.Move(util::DEVICE, util::HOST));
+            GUARD_CU(data_slice.component_ids.SetPointer(h_component_ids));
+            GUARD_CU(data_slice.component_ids.Move(util::DEVICE, util::HOST));
 
-                // </TODO>
-            } else if (target == util::HOST) { // SDP: data is on CPU
-                GUARD_CU(data_slice.component_ids.ForEach(h_component_ids,
-                    []__host__ __device__ (const VertexId &device_component_id, VertexId &host_component_id){
-                        host_component_id = device_component_id;
-                    }, nodes, util::HOST));
-                // </TODO>
-            }
-
-            // SDP count the number of components
-
-            int *marker = new int[nodes];
-            assert(null_ptr != marker);
-            memset(marker, 0, sizeof(int) * this->nodes);
-
-            num_components=0;
-            for (int node=0; node < nodes; node++) {
-                if (marker[h_component_ids[node]] == 0) {
-                    num_components++;
-                    //printf("%d\t ",node);
-                    marker[h_component_ids[node]]=1;
-                }
-            }
-
-            delete [] marker;
-        } else { // num_gpus != 1
-            
-            // ============ INCOMPLETE TEMPLATE - MULTIGPU ============
-            
-            // // TODO: extract the results from multiple GPUs, e.g.:
-            // // util::Array1D<SizeT, ValueT *> th_distances;
-            // // th_distances.SetName("bfs::Problem::Extract::th_distances");
-            // // GUARD_CU(th_distances.Allocate(this->num_gpus, util::HOST));
-
-            // for (int gpu = 0; gpu < this->num_gpus; gpu++)
-            // {
-            //     auto &data_slice = data_slices[gpu][0];
-            //     if (target == util::DEVICE)
-            //     {
-            //         GUARD_CU(util::SetDevice(this->gpu_idx[gpu]));
-            //         // GUARD_CU(data_slice.distances.Move(util::DEVICE, util::HOST));
-            //     }
-            //     // th_distances[gpu] = data_slice.distances.GetPointer(util::HOST);
-            // } //end for(gpu)
-
-            // for (VertexT v = 0; v < nodes; v++)
-            // {
-            //     int gpu = this -> org_graph -> GpT::partition_table[v];
-            //     VertexT v_ = v;
-            //     if ((GraphT::FLAG & gunrock::partitioner::Keep_Node_Num) != 0)
-            //         v_ = this -> org_graph -> GpT::convertion_table[v];
-
-            //     // h_distances[v] = th_distances[gpu][v_];
-            // }
-
-            // // GUARD_CU(th_distances.Release());
+            // </TODO>
+        } else if (target == util::HOST) { // SDP: data is on CPU
+            GUARD_CU(data_slice.component_ids.ForEach(h_component_ids,
+                []__host__ __device__ (const VertexId &device_component_id, VertexId &host_component_id){
+                    host_component_id = device_component_id;
+                }, nodes, util::HOST));
+            // </TODO>
         }
+
+        // SDP count the number of components
+
+        int *marker = new int[nodes];
+        assert(null_ptr != marker);
+        memset(marker, 0, sizeof(int) * this->nodes);
+
+        num_components=0;
+        for (int node=0; node < nodes; node++) {
+            if (marker[h_component_ids[node]] == 0) {
+                num_components++;
+                //printf("%d\t ",node);
+                marker[h_component_ids[node]]=1;
+            }
+        }
+
+        delete [] marker;
 
         return retval;
     }
