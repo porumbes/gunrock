@@ -19,15 +19,13 @@
 #include <gunrock/app/enactor_loop.cuh>
 #include <gunrock/oprtr/oprtr.cuh>
  
-// <TODO> change includes
-#include <gunrock/app/hello/hello_problem.cuh>
+#include <gunrock/app/cc/cc_problem.cuh>
 // </TODO>
 
 
 namespace gunrock {
 namespace app {
-// <TODO> change namespace
-namespace hello {
+namespace cc {
 // </TODO>
 
 /**
