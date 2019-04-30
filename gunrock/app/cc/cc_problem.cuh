@@ -75,9 +75,20 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
      */
     struct DataSlice : BaseDataSlice
     {
-        // <TODO> add problem specific storage arrays:
-        util::Array1D<SizeT, ValueT> degrees;
-        util::Array1D<SizeT, int> visited;
+        // device storage arrays
+        util::Array1D<SizeT, VertexId> component_ids; /**< Used for component id */
+        util::Array1D<SizeT, signed char> masks;         /**< Size equals to node number, show if a node is the root */
+        util::Array1D<SizeT, bool    > marks;         /**< Size equals to edge number, show if two vertices belong to the same component */
+        util::Array1D<SizeT, VertexId> froms;         /**< Size equals to edge number, from vertex of one edge */
+        util::Array1D<SizeT, VertexId> tos;           /**< Size equals to edge number, to vertex of one edge */
+        util::Array1D<SizeT, int     > vertex_flag;   /**< Finish flag for per-vertex kernels in CC algorithm */
+        util::Array1D<SizeT, int     > edge_flag;     /**< Finish flag for per-edge kernels in CC algorithm */
+        util::Array1D<SizeT, VertexId*> vertex_associate_ins;
+        int turn;
+        bool has_change, previous_change;
+        bool scanned_queue_computed;
+        VertexId *temp_vertex_out;
+        VertexId *temp_comp_out;
         // </TODO>
 
         /*
