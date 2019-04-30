@@ -220,22 +220,49 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         {
             cudaError_t retval = cudaSuccess;
             SizeT nodes = this -> sub_graph -> nodes;
+            SizeT edges = this -> sub_graph -> edges;
 
             // Ensure data are allocated
             // <TODO> ensure size of problem specific data:
-            GUARD_CU(degrees.EnsureSize_(nodes, target));
-            GUARD_CU(visited.EnsureSize_(nodes, target));
+            // SDP looks like we need to "ensure" sizes for 
+            // all allocated problem specific data. Not 
+            // super cool -- repeating the allocation
+            // calls with "EnsureSize"
+
+            GUARD_CU(component_ids         .EnsureSize_(nodes, util::DEVICE));
+            GUARD_CU(masks                 .EnsureSize_(nodes, util::DEVICE));
+            GUARD_CU(marks                 .EnsureSize_(edges, util::DEVICE));            
+            GUARD_CU(vertex_flag           .EnsureSize_(1, util::HOST | util::DEVICE));
+            GUARD_CU(edge_flag             .EnsureSize_(1, util::HOST | util::DEVICE));
+            GUARD_CU(vertex_associate_ins  .EnsureSize_(1, util::HOST | util::DEVICE));
             // </TODO>
 
             // Reset data
-            // <TODO> reset problem specific data, e.g.:
-            GUARD_CU(degrees.ForEach([]__host__ __device__ (ValueT &x){
-               x = (ValueT)0;
-            }, nodes, target, this -> stream));
+            // Allocate output component_ids if necessary
+            //util::MemsetIdxKernel<<<128, 128>>>(component_ids .GetPointer(util::DEVICE), nodes);
+            GUARD_CU(component_ids.ForAll([]__host__ __device__ (VertexId *component_ids_, const SizeT &id){
+                    component_ids_[id] = id;
+                }, nodes, util::DEVICE, this -> stream));
 
-            GUARD_CU(visited.ForEach([]__host__ __device__ (int &x){
-               x = (int)0;
-            }, nodes, target, this -> stream));
+            // Allocate marks if necessary
+            //util::MemsetKernel   <<<128, 128>>>(marks         .GetPointer(util::DEVICE), false, edges);
+            GUARD_CU(marks.ForEach([]__host__ __device__ (bool &mark){
+                mark = false;
+            }, sub_graph->edges, util::DEVICE, this -> stream));
+
+            // Allocate masks if necessary
+            //util::MemsetKernel    <<<128, 128>>>(masks        .GetPointer(util::DEVICE), (signed char)0, nodes);
+            GUARD_CU(masks.ForEach([]__host__ __device__ (signed char &x){
+               x = (signed char)0;
+            }, nodes, util::DEVICE, this -> stream));
+
+            // Allocate vertex_flag if necessary
+            vertex_flag[0]=1;
+            GUARD_CU(vertex_flag.Move(util::HOST, util::DEVICE));
+
+            // Allocate edge_flag if necessary
+            edge_flag[0]=1;
+            GUARD_CU(edge_flag.Move(util::HOST, util::DEVICE));
             // </TODO>
 
             return retval;
