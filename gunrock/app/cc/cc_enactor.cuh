@@ -44,6 +44,123 @@ cudaError_t UseParameters_enactor(util::Parameters &parameters)
     return retval;
 }
 
+template <typename EnactorT>
+struct HookInitIterationLoop : public IterationLoopBase
+    <EnactorT, Use_FullQ | Push
+    > // SDP -- Push or Pull, other options ?
+{
+    typedef typename EnactorT::VertexT VertexT;
+    typedef typename EnactorT::SizeT   SizeT;
+    typedef typename EnactorT::ValueT  ValueT;
+    typedef typename EnactorT::Problem::GraphT::CsrT CsrT;
+    typedef typename EnactorT::Problem::GraphT::GpT  GpT;
+
+    typedef IterationLoopBase
+    <EnactorT, Use_FullQ | Push // SDP -- Push or Pull, other options ?
+    > BaseIterationLoop;
+
+    HookInitIterationLoop() : BaseIterationLoop() {}
+
+    /**
+     * @brief Core computation of CC, one iteration
+     * @param[in] peer_ Which GPU peers to work on, 0 means local
+     * \return cudaError_t error message(s), if any
+     */
+    cudaError_t Core(int peer_ = 0)
+    {
+        // --
+        // Alias variables
+        
+        auto &data_slice = this -> enactor -> 
+            problem -> data_slices[this -> gpu_num][0];
+        
+        auto &enactor_slice = this -> enactor ->
+            enactor_slices[this -> gpu_num * this -> enactor -> num_gpus + peer_];
+        
+        auto &enactor_stats    = enactor_slice.enactor_stats;
+        auto &graph            = data_slice.sub_graph[0];
+        auto &frontier         = enactor_slice.frontier;
+        auto &oprtr_parameters = enactor_slice.oprtr_parameters;
+        auto &retval           = enactor_stats.retval;
+        auto &iteration        = enactor_stats.iteration;
+
+        // CC specific problem data        
+        auto &component_ids = data_slice.component_ids;
+        auto &froms         = data_slice.froms;
+        auto &tos           = data_slice.tos; 
+        // </TODO>
+        
+        // --
+        // Define operations
+
+        // advance operation
+        auto advance_op = [
+            // </TODO>
+        ] __host__ __device__ (
+            const VertexT &src, VertexT &dest, const SizeT &edge_id,
+            const VertexT &input_item, const SizeT &input_pos,
+            SizeT &output_pos) -> bool
+        {
+            // SDP, not really sure what to return here? Use 'true' for now.
+            // Assuming this means the vertex is "valid"?
+            return true;
+            // </TODO>
+        };
+
+        // filter operation
+        auto filter_op = [
+            component_ids,
+            froms,
+            tos
+            // </TODO>
+        ] __host__ __device__ (
+            const VertexT &src, VertexT &dest, const SizeT &edge_id,
+            const VertexT &input_item, const SizeT &input_pos,
+            SizeT &output_pos) -> bool
+        {
+            VertexId from_node = froms[src];
+            VertexId to_node   = tos[src];
+
+            VertexId max_node = from_node > to_node ? from_node : to_node;
+            VertexId min_node = from_node + to_node - max_node;
+
+            component_ids[max_node] = min_node;
+
+            return true;
+            // </TODO>
+        };
+        
+        // --
+        // Run
+        
+        // <TODO> some of this may need to be edited depending on algorithmic needs
+        // !! How much variation between apps is there in these calls?
+        // SDP not sure if anything needs to be done here.
+        
+        GUARD_CU(oprtr::Advance<oprtr::OprtrType_V2V>(
+            graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
+            oprtr_parameters, advance_op, filter_op));
+        
+        if (oprtr_parameters.advance_mode != "LB_CULL" &&
+            oprtr_parameters.advance_mode != "LB_LIGHT_CULL")
+        {
+            frontier.queue_reset = false;
+            GUARD_CU(oprtr::Filter<oprtr::OprtrType_V2V>(
+                graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
+                oprtr_parameters, filter_op));
+        }
+
+        // Get back the resulted frontier length
+        GUARD_CU(frontier.work_progress.GetQueueLength(
+            frontier.queue_index, frontier.queue_length,
+            false, oprtr_parameters.stream, true));
+
+        // </TODO>
+        
+        return retval;
+    }
+};
+
 /**
  * @brief defination of hello iteration loop
  * @tparam EnactorT Type of enactor
