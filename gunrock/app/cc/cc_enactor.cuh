@@ -437,7 +437,7 @@ struct PtrJumpIterationLoop : public IterationLoopBase
         // </TODO>
         > BaseIterationLoop;
 
-    helloIterationLoop() : BaseIterationLoop() {}
+    PtrJumpIterationLoop() : BaseIterationLoop() {}
 
     /**
      * @brief Core computation of hello, one iteration
