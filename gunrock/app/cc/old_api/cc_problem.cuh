@@ -203,15 +203,15 @@ struct CCProblem : ProblemBase<VertexId, SizeT, Value,
             // Construct coo from/to edge list from row_offsets and column_indices
             for (VertexId node=0; node < graph->nodes; node++)
             {
-                SizeT start_edge = graph->row_offsets[node  ];
-                SizeT end_edge   = graph->row_offsets[node+1];
+                SizeT start_edge = graph->row_offsets[node  ]; // SDP row start
+                SizeT end_edge   = graph->row_offsets[node+1]; // SDP see up to this number of items in row
                 if (TO_TRACK)
                 if (util::to_track(node))
                     printf("node %lld @ gpu %d : %lld -> %lld\n", 
                         (long long) node, gpu_idx, 
                         (long long) start_edge, 
                         (long long) end_edge);
-                for (SizeT edge = start_edge; edge < end_edge; ++edge)
+                for (SizeT edge = start_edge; edge < end_edge; ++edge) // SDP walk across the row
                 {
                     froms[edge] = node;
                     //tos  [edge] = graph->column_indices[edge];
