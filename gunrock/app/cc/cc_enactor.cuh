@@ -154,6 +154,17 @@ struct UpdateMaskIterationLoop : public IterationLoopBase
         
         return retval;
     }
+
+    bool Stop_Condition(int gpu_num = 0)
+    {
+        // SDP this is run in a larger, outer loop
+        // in the original implementation 
+
+        // SDP -- stop condition from old:
+        // while(!data_slice->edge_flag[0])
+        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
+        return data_slice.edge_flag[0];
+    }
 };
 
 template <typename EnactorT>
@@ -270,6 +281,14 @@ struct HookInitIterationLoop : public IterationLoopBase
         // </TODO>
         
         return retval;
+    }
+
+    bool Stop_Condition(int gpu_num = 0)
+    {
+        // SDP not sure what to do for this.
+        // Probably not needed. HookInit happens in FullQueue_Gather 
+        // in old API. Only runs if:
+        // data_slice->turn == 0
     }
 };
 
@@ -408,6 +427,42 @@ struct HookMaxIterationLoop : public IterationLoopBase
         
         return retval;
     }
+
+    bool Stop_Condition(int gpu_num = 0)
+    {
+        // SDP -- stop condition from old:
+        // while(!data_slice->edge_flag[0])
+        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
+        return data_slice.edge_flag[0];
+
+        // SDP All_Done returns:
+        // - true if a cuda error was detected
+        // - false if frontier.queue_length != 0 (makes sense, still have work to do)
+        // - true if no error detected and frontier.queue_length == 0 AND have only 1 gpu
+        // --- stopped worrying once it got to multi-gpu sections
+        // - I don't like that this combines error with frontier check
+        // if (All_Done(this -> enactor[0], gpu_num))
+        // {
+
+        // }
+
+        // SDP -- from bc
+        // auto &enactor_slices = this -> enactor -> enactor_slices;
+        // auto iter = enactor_slices[0].enactor_stats.iteration;
+        // if (All_Done(this -> enactor[0], gpu_num)) {
+        //     if(iter > 1) {
+        //         return false;
+        //     } else {
+        //         return true;
+        //     }
+        // } else {
+        //     if(iter < 0) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+    }
 };
 
 /**
@@ -533,6 +588,42 @@ struct PtrJumpIterationLoop : public IterationLoopBase
         // </TODO>
         
         return retval;
+    }
+
+    bool Stop_Condition(int gpu_num = 0)
+    {
+        // SDP -- stop condition from old:
+        // while (!data_slice -> vertex_flag[0])
+        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
+        return data_slice.vertex_flag[0];
+        
+        // SDP All_Done returns:
+        // - true if a cuda error was detected
+        // - false if frontier.queue_length != 0 (makes sense, still have work to do)
+        // - true if no error detected and frontier.queue_length == 0 AND have only 1 gpu
+        // --- stopped worrying once it got to multi-gpu sections
+        // - I don't like that this combines error with frontier check
+        // if (All_Done(this -> enactor[0], gpu_num))
+        // {
+
+        // }
+
+        // SDP -- from bc
+        // auto &enactor_slices = this -> enactor -> enactor_slices;
+        // auto iter = enactor_slices[0].enactor_stats.iteration;
+        // if (All_Done(this -> enactor[0], gpu_num)) {
+        //     if(iter > 1) {
+        //         return false;
+        //     } else {
+        //         return true;
+        //     }
+        // } else {
+        //     if(iter < 0) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
     }
 
     /**
@@ -716,6 +807,42 @@ struct PtrJumpMaskIterationLoop : public IterationLoopBase
         return retval;
     }
 
+    bool Stop_Condition(int gpu_num = 0)
+    {
+        // SDP -- stop condition from old:
+        // while (!data_slice -> vertex_flag[0])
+        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
+        return data_slice.vertex_flag[0];
+        
+        // SDP All_Done returns:
+        // - true if a cuda error was detected
+        // - false if frontier.queue_length != 0 (makes sense, still have work to do)
+        // - true if no error detected and frontier.queue_length == 0 AND have only 1 gpu
+        // --- stopped worrying once it got to multi-gpu sections
+        // - I don't like that this combines error with frontier check
+        // if (All_Done(this -> enactor[0], gpu_num))
+        // {
+
+        // }
+
+        // SDP -- from bc
+        // auto &enactor_slices = this -> enactor -> enactor_slices;
+        // auto iter = enactor_slices[0].enactor_stats.iteration;
+        // if (All_Done(this -> enactor[0], gpu_num)) {
+        //     if(iter > 1) {
+        //         return false;
+        //     } else {
+        //         return true;
+        //     }
+        // } else {
+        //     if(iter < 0) {
+        //         return true;
+        //     } else {
+        //         return false;
+        //     }
+        // }
+    }
+
     /**
      * @brief Routine to combine received data and local data
      * @tparam NUM_VERTEX_ASSOCIATES Number of data associated with each transmition item, typed VertexT
@@ -883,6 +1010,17 @@ struct PtrJumpUnmaskIterationLoop : public IterationLoopBase
         // </TODO>
         
         return retval;
+    }
+
+    bool Stop_Condition(int gpu_num = 0)
+    {
+        // SDP not sure about this one, like a few others
+        // it runs in a big outer loop.
+         
+        // SDP -- stop condition from old:
+        // while(!data_slice->edge_flag[0])
+        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
+        return data_slice.edge_flag[0];
     }
 
     /**
