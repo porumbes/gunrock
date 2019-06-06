@@ -44,6 +44,109 @@ cudaError_t UseParameters_enactor(util::Parameters &parameters)
     return retval;
 }
 
+/**
+ * @brief defination of hello iteration loop
+ * @tparam EnactorT Type of enactor
+ */
+template <typename EnactorT>
+struct CCIterationLoop : public IterationLoopBase
+    <EnactorT, Use_FullQ | Push
+    // <TODO>if needed, stack more option, e.g.:
+    // | (((EnactorT::Problem::FLAG & Mark_Predecessors) != 0) ?
+    // Update_Predecessors : 0x0)
+    // </TODO>
+    >
+{
+    typedef typename EnactorT::VertexT VertexT;
+    typedef typename EnactorT::SizeT   SizeT;
+    typedef typename EnactorT::ValueT  ValueT;
+    typedef typename EnactorT::Problem::GraphT::CsrT CsrT;
+    typedef typename EnactorT::Problem::GraphT::GpT  GpT;
+    
+    typedef IterationLoopBase
+        <EnactorT, Use_FullQ | Push
+        // <TODO> add the same options as in template parameters here, e.g.:
+        // | (((EnactorT::Problem::FLAG & Mark_Predecessors) != 0) ?
+        // Update_Predecessors : 0x0)
+        // </TODO>
+        > BaseIterationLoop;
+
+    CCIterationLoop() : BaseIterationLoop() {}
+
+    /**
+     * @brief Core computation of hello, one iteration
+     * @param[in] peer_ Which GPU peers to work on, 0 means local
+     * \return cudaError_t error message(s), if any
+     */
+    cudaError_t Core(int peer_ = 0)
+    {
+        // --
+        // Alias variables
+        
+        auto &data_slice = this -> enactor ->
+            problem -> data_slices[this -> gpu_num][0];
+        
+        auto &enactor_slice = this -> enactor ->
+            enactor_slices[this -> gpu_num * this -> enactor -> num_gpus + peer_];
+        
+        auto &enactor_stats    = enactor_slice.enactor_stats;
+        auto &graph            = data_slice.sub_graph[0];
+        auto &frontier         = enactor_slice.frontier;
+        auto &oprtr_parameters = enactor_slice.oprtr_parameters;
+        auto &retval           = enactor_stats.retval;
+        auto &iteration        = enactor_stats.iteration;
+        
+        
+        return retval;
+    }
+
+    /**
+     * @brief Routine to combine received data and local data
+     * @tparam NUM_VERTEX_ASSOCIATES Number of data associated with each transmition item, typed VertexT
+     * @tparam NUM_VALUE__ASSOCIATES Number of data associated with each transmition item, typed ValueT
+     * @param  received_length The numver of transmition items received
+     * @param[in] peer_ which peer GPU the data came from
+     * \return cudaError_t error message(s), if any
+     */
+    template <
+        int NUM_VERTEX_ASSOCIATES,
+        int NUM_VALUE__ASSOCIATES>
+    cudaError_t ExpandIncoming(SizeT &received_length, int peer_)
+    {
+        
+        // ================ INCOMPLETE TEMPLATE - MULTIGPU ====================
+        
+        auto &data_slice    = this -> enactor ->
+            problem -> data_slices[this -> gpu_num][0];
+        auto &enactor_slice = this -> enactor ->
+            enactor_slices[this -> gpu_num * this -> enactor -> num_gpus + peer_];
+        //auto iteration = enactor_slice.enactor_stats.iteration;
+        // TODO: add problem specific data alias here, e.g.:
+        // auto         &distances          =   data_slice.distances;
+
+        auto expand_op = [
+        // TODO: pass data used by the lambda, e.g.:
+        // distances
+        ] __host__ __device__(
+            VertexT &key, const SizeT &in_pos,
+            VertexT *vertex_associate_ins,
+            ValueT  *value__associate_ins) -> bool
+        {
+            // TODO: fill in the lambda to combine received and local data, e.g.:
+            // ValueT in_val  = value__associate_ins[in_pos];
+            // ValueT old_val = atomicMin(distances + key, in_val);
+            // if (old_val <= in_val)
+            //     return false;
+            return true;
+        };
+
+        cudaError_t retval = BaseIterationLoop:: template ExpandIncomingBase
+            <NUM_VERTEX_ASSOCIATES, NUM_VALUE__ASSOCIATES>
+            (received_length, peer_, expand_op);
+        return retval;
+    }
+}; // end of CCIterationLoop
+
 template <typename EnactorT>
 struct UpdateMaskIterationLoop : public IterationLoopBase
     <EnactorT, Use_FullQ | Push
