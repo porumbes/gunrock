@@ -155,6 +155,50 @@ struct CCIterationLoop : public IterationLoopBase
             return;
         }
 
+        // 
+        // Prepare for Update Mask
+        //
+        GUARD_CU(marks.ForEach([]__host__ __device__ (bool &mark){
+            mark = false;
+        }, sub_graph->edges, util::DEVICE, this -> stream));
+
+        // SDP, figure out the following:
+        // frontier_attribute->queue_index   = 0;        // Work queue index
+        // frontier_attribute->selector      = 0;
+        // frontier_attribute->queue_length  = graph_slice->nodes;
+        // frontier_attribute->queue_reset   = true;
+
+
+        //
+        // Update Mask
+        //
+        // SDP, SizeT vs VertexID? Does it matter? See RunCC in old api,
+        // all template parameters are <int, int, int>. Simple answer is yes
+        // in general. Should we be casting? What happens if VertexID is a float?
+        // Is that even possible for CC? 
+        auto update_mask_op = [ 
+            component_ids
+        ] __host__ __device__ (signed char *masks_, const SizeT &id)
+        {
+            VertexId parent = Load<cub::LOAD_CG>(component_ids + id);
+            masks_[src] = (parent == id) ? 0 : 1;
+        };
+
+        masks.ForAll(update_mask_op,
+                     graph.nodes,
+                     util::DEVICE,
+                     oprtr_parameters.stream);
+
+        // SDP, figure out how to incorporate the following:
+        // if (enactor -> debug && (enactor_stats->retval = 
+        //     util::GRError("filter::Kernel Update Mask Operation failed", 
+        //         __FILE__, __LINE__))) return;
+        // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;        
+
+        // enactor_stats->iteration = 1; // SDP, figure out how to incorporate
+        data_slice->edge_flag[0] = 0;
+        while (!data_slice->edge_flag[0])
+
         return retval;
     }
 
@@ -204,129 +248,6 @@ struct CCIterationLoop : public IterationLoopBase
         return retval;
     }
 }; // end of CCIterationLoop
-
-template <typename EnactorT>
-struct UpdateMaskIterationLoop : public IterationLoopBase
-    <EnactorT, Use_FullQ | Push
-    > // SDP -- Push or Pull, other options ?
-{
-    typedef typename EnactorT::VertexT VertexT;
-    typedef typename EnactorT::SizeT   SizeT;
-    typedef typename EnactorT::ValueT  ValueT;
-    typedef typename EnactorT::Problem::GraphT::CsrT CsrT;
-    typedef typename EnactorT::Problem::GraphT::GpT  GpT;
-
-    typedef IterationLoopBase
-    <EnactorT, Use_FullQ | Push // SDP -- Push or Pull, other options ?
-    > BaseIterationLoop;
-
-    UpdateMaskIterationLoop() : BaseIterationLoop() {}
-
-    /**
-     * @brief Core computation of CC, one iteration
-     * @param[in] peer_ Which GPU peers to work on, 0 means local
-     * \return cudaError_t error message(s), if any
-     */
-    cudaError_t Core(int peer_ = 0)
-    {
-        // --
-        // Alias variables
-        
-        auto &data_slice = this -> enactor -> 
-            problem -> data_slices[this -> gpu_num][0];
-        
-        auto &enactor_slice = this -> enactor ->
-            enactor_slices[this -> gpu_num * this -> enactor -> num_gpus + peer_];
-        
-        auto &enactor_stats    = enactor_slice.enactor_stats;
-        auto &graph            = data_slice.sub_graph[0];
-        auto &frontier         = enactor_slice.frontier;
-        auto &oprtr_parameters = enactor_slice.oprtr_parameters;
-        auto &retval           = enactor_stats.retval;
-        auto &iteration        = enactor_stats.iteration;
-
-        // CC specific problem data        
-        auto &component_ids = data_slice.component_ids;
-        auto &masks         = data_slice.masks; 
-        // </TODO>
-        
-        // --
-        // Define operations
-
-        // advance operation
-        auto advance_op = [
-            // </TODO>
-        ] __host__ __device__ (
-            const VertexT &src, VertexT &dest, const SizeT &edge_id,
-            const VertexT &input_item, const SizeT &input_pos,
-            SizeT &output_pos) -> bool
-        {
-            // SDP, not really sure what to return here? Use 'true' for now.
-            return true;
-            // </TODO>
-        };
-
-        // filter operation
-        auto filter_op = [
-            component_ids,
-            masks
-            // </TODO>
-        ] __host__ __device__ (
-            const VertexT &src, VertexT &dest, const SizeT &edge_id,
-            const VertexT &input_item, const SizeT &input_pos,
-            SizeT &output_pos) -> bool
-        {
-            // SDP assume that 'node' from old API is 'src' for now.
-            // I think I want it to be whatever my vertex id happens to be,
-            // but I'm not sure which parameter that represents in the lambda
-            VertexId parent = Load<cub::LOAD_CG>(component_ids + src);
-            masks[src] = (parent == src) ? 0 : 1;
-
-            return true;
-            // </TODO>
-        };
-        
-        // --
-        // Run
-        
-        // <TODO> some of this may need to be edited depending on algorithmic needs
-        // !! How much variation between apps is there in these calls?
-        // SDP not sure if anything needs to be done here.
-
-        GUARD_CU(oprtr::Advance<oprtr::OprtrType_V2V>(
-            graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
-            oprtr_parameters, advance_op, filter_op));
-        
-        if (oprtr_parameters.advance_mode != "LB_CULL" &&
-            oprtr_parameters.advance_mode != "LB_LIGHT_CULL")
-        {
-            frontier.queue_reset = false;
-            GUARD_CU(oprtr::Filter<oprtr::OprtrType_V2V>(
-                graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
-                oprtr_parameters, filter_op));
-        }
-
-        // Get back the resulted frontier length
-        GUARD_CU(frontier.work_progress.GetQueueLength(
-            frontier.queue_index, frontier.queue_length,
-            false, oprtr_parameters.stream, true));
-
-        // </TODO>
-        
-        return retval;
-    }
-
-    bool Stop_Condition(int gpu_num = 0)
-    {
-        // SDP this is run in a larger, outer loop
-        // in the original implementation 
-
-        // SDP -- stop condition from old:
-        // while(!data_slice->edge_flag[0])
-        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
-        return data_slice.edge_flag[0];
-    }
-};
 
 template <typename EnactorT>
 struct HookInitIterationLoop : public IterationLoopBase
