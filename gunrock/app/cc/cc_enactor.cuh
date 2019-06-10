@@ -99,6 +99,10 @@ struct CCIterationLoop : public IterationLoopBase
         // CC specific problem data        
         auto &component_ids = data_slice.component_ids;
         auto &vertex_flag   = data_slice.vertex_flag;
+        auto &edge_flag     = data_slice.edge_flag;
+        auto &marks         = data_slice.marks;
+        auto &froms         = data_slice.froms;
+        auto &tos           = data_slice.tos; 
         // </TODO>
         
         //
@@ -195,9 +199,86 @@ struct CCIterationLoop : public IterationLoopBase
         //         __FILE__, __LINE__))) return;
         // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;        
 
+        //
+        // Hooking and additional Pointer Jumping
+        //
         // enactor_stats->iteration = 1; // SDP, figure out how to incorporate
-        data_slice->edge_flag[0] = 0;
-        while (!data_slice->edge_flag[0])
+        edge_flag[0] = 0;
+        while (!edge_flag[0])
+        {
+            //
+            // Prepare for Hook Max
+            //
+            // SDP, figure out how to incorporate
+            // frontier_attribute->queue_index  = 0;        // Work queue index
+            // frontier_attribute -> queue_length = graph_slice -> edges;
+            // frontier_attribute->selector     = 0;
+            // frontier_attribute->queue_reset  = true;
+
+            edge_flag[0] = 1;
+            GUARD_CU(edge_flag.Move(util::HOST, util::DEVICE)); 
+
+            //
+            // Hook Max
+            //
+            auto hook_max_op = [
+                component_ids,
+                froms,
+                tos,
+                edge_flag
+            ] __host__ __device__ (bool *marks_, const SizeT &id)
+            {
+                bool mark = Load<cub::LOAD_CG>(marks_ + id);
+                if (!mark)
+                {
+                    VertexId from_node      = Load<cub::LOAD_CG>(froms + id);
+                    VertexId to_node        = Load<cub::LOAD_CG>(tos + id);
+                    VertexId parent_from    = Load<cub::LOAD_CG>(component_ids + from_node);
+                    VertexId parent_to      = Load<cub::LOAD_CG>(component_ids + to_node);  
+
+                    if (parent_from == parent_to)
+                    {
+                        Store(true, marks_ + id);
+                    } 
+                    else 
+                    { 
+                        VertexId max_node = parent_from > parent_to ? parent_from : parent_to;
+                        VertexId min_node = parent_from + parent_to - max_node;
+                        Store(min_node, component_ids + max_node);
+                        Store(0, edge_flag + 0);
+                    }                  
+                }
+
+            };
+
+            marks.ForAll(hook_max_op,
+                         graph.edges,
+                         util::DEVICE,
+                         oprtr_parameters.stream);
+
+            // hook_max_op could have modified edge_flag,
+            // move it back to the HOST
+            GUARD_CU(edge_flag.Move(util::DEVICE, util::HOST));
+
+            // SDP, not sure why we need to (if we need to) synchronize here?
+            // Could be because of the Move directly above, but then why didn't we
+            // sync with the Move from HOST to DEVICE at the top of the while loop?
+            // Old API does this.
+            GUARD_CU2(cudaStreamSynchronize(stream), "cudaStreamSynchronize failed");
+
+
+            // SDP, figure out how to incorporate the following:
+            // if (enactor -> debug && (enactor_stats->retval = 
+            //     util::GRError("filter::Kernel Hook Min/Max Operation failed", 
+            //         __FILE__, __LINE__))) return;
+            // enactor_stats -> edges_queued[0] += frontier_attribute->queue_length;
+            // frontier_attribute->queue_reset = false;
+            // frontier_attribute->queue_index++;
+            // enactor_stats->iteration++;
+
+            // Check if done
+            if (edge_flag[0]) break; //|| enactor_stats->iteration>5) break;
+        }
 
         return retval;
     }
@@ -371,179 +452,6 @@ struct HookInitIterationLoop : public IterationLoopBase
         // Probably not needed. HookInit happens in FullQueue_Gather 
         // in old API. Only runs if:
         // data_slice->turn == 0
-    }
-};
-
-template <typename EnactorT>
-struct HookMaxIterationLoop : public IterationLoopBase
-    <EnactorT, Use_FullQ | Push
-    > // SDP -- Push or Pull, other options ?
-{
-    typedef typename EnactorT::VertexT VertexT;
-    typedef typename EnactorT::SizeT   SizeT;
-    typedef typename EnactorT::ValueT  ValueT;
-    typedef typename EnactorT::Problem::GraphT::CsrT CsrT;
-    typedef typename EnactorT::Problem::GraphT::GpT  GpT;
-
-    typedef IterationLoopBase
-    <EnactorT, Use_FullQ | Push // SDP -- Push or Pull, other options ?
-    > BaseIterationLoop;
-
-    HookMaxIterationLoop() : BaseIterationLoop() {}
-
-    /**
-     * @brief Core computation of CC, one iteration
-     * @param[in] peer_ Which GPU peers to work on, 0 means local
-     * \return cudaError_t error message(s), if any
-     */
-    cudaError_t Core(int peer_ = 0)
-    {
-        // --
-        // Alias variables
-        
-        auto &data_slice = this -> enactor -> 
-            problem -> data_slices[this -> gpu_num][0];
-        
-        auto &enactor_slice = this -> enactor ->
-            enactor_slices[this -> gpu_num * this -> enactor -> num_gpus + peer_];
-        
-        auto &enactor_stats    = enactor_slice.enactor_stats;
-        auto &graph            = data_slice.sub_graph[0];
-        auto &frontier         = enactor_slice.frontier;
-        auto &oprtr_parameters = enactor_slice.oprtr_parameters;
-        auto &retval           = enactor_stats.retval;
-        auto &iteration        = enactor_stats.iteration;
-
-        // CC specific problem data        
-        auto &marks         = data_slice.marks;
-        auto &component_ids = data_slice.component_ids;
-        auto &froms         = data_slice.froms;
-        auto &tos           = data_slice.tos; 
-        auto &edge_flag     = data_slice.edge_flag;
-        // </TODO>
-        
-        // --
-        // Define operations
-
-        // advance operation
-        auto advance_op = [
-            // </TODO>
-        ] __host__ __device__ (
-            const VertexT &src, VertexT &dest, const SizeT &edge_id,
-            const VertexT &input_item, const SizeT &input_pos,
-            SizeT &output_pos) -> bool
-        {            
-            // SDP, not really sure what to return here? Use 'true' for now.
-            return true;
-            // </TODO>
-        };
-
-        // filter operation
-        auto filter_op = [
-            marks,
-            component_ids,
-            froms,
-            tos,
-            edge_flag
-            // </TODO>
-        ] __host__ __device__ (
-            const VertexT &src, VertexT &dest, const SizeT &edge_id,
-            const VertexT &input_item, const SizeT &input_pos,
-            SizeT &output_pos) -> bool
-        {
-            bool mark = Load<cub::LOAD_CG>(marks + src);
-            if (!mark) {
-                
-                VertexId from_node      = Load<cub::LOAD_CG>(froms + src);
-                VertexId to_node        = Load<cub::LOAD_CG>(tos + src);
-                VertexId parent_from    = Load<cub::LOAD_CG>(component_ids + from_node);
-                VertexId parent_to      = Load<cub::LOAD_CG>(component_ids + to_node);
-                
-                if (parent_from == parent_to)
-                {
-                    Store(true, marks + src);
-                    //util::io::ModifiedStore<Problem::QUEUE_WRITE_MODIFIER>::St(
-                    //    true, d_data_slice ->marks + node);
-                } else { 
-                    VertexId max_node = parent_from > parent_to ? parent_from : parent_to;
-                    VertexId min_node = parent_from + parent_to - max_node;
-                    Store(min_node, component_ids + max_node);
-                    Store(0, edge_flag + 0);
-                    //util::io::ModifiedStore<Problem::QUEUE_WRITE_MODIFIER>::St(
-                    //    min_node, d_data_slice->component_ids + max_node);
-                    //util::io::ModifiedStore<Problem::QUEUE_WRITE_MODIFIER>::St(
-                    //    0, d_data_slice->edge_flag + 0);
-                }
-            }
-
-            return true;
-            // </TODO>
-        };
-        
-        // --
-        // Run
-        
-        // <TODO> some of this may need to be edited depending on algorithmic needs
-        // !! How much variation between apps is there in these calls?
-        // SDP not sure if anything needs to be done here.
-        
-        GUARD_CU(oprtr::Advance<oprtr::OprtrType_V2V>(
-            graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
-            oprtr_parameters, advance_op, filter_op));
-        
-        if (oprtr_parameters.advance_mode != "LB_CULL" &&
-            oprtr_parameters.advance_mode != "LB_LIGHT_CULL")
-        {
-            frontier.queue_reset = false;
-            GUARD_CU(oprtr::Filter<oprtr::OprtrType_V2V>(
-                graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
-                oprtr_parameters, filter_op));
-        }
-
-        // Get back the resulted frontier length
-        GUARD_CU(frontier.work_progress.GetQueueLength(
-            frontier.queue_index, frontier.queue_length,
-            false, oprtr_parameters.stream, true));
-
-        // </TODO>
-        
-        return retval;
-    }
-
-    bool Stop_Condition(int gpu_num = 0)
-    {
-        // SDP -- stop condition from old:
-        // while(!data_slice->edge_flag[0])
-        auto &data_slice = this -> enactor -> problem -> data_slices[this -> gpu_num][0];
-        return data_slice.edge_flag[0];
-
-        // SDP All_Done returns:
-        // - true if a cuda error was detected
-        // - false if frontier.queue_length != 0 (makes sense, still have work to do)
-        // - true if no error detected and frontier.queue_length == 0 AND have only 1 gpu
-        // --- stopped worrying once it got to multi-gpu sections
-        // - I don't like that this combines error with frontier check
-        // if (All_Done(this -> enactor[0], gpu_num))
-        // {
-
-        // }
-
-        // SDP -- from bc
-        // auto &enactor_slices = this -> enactor -> enactor_slices;
-        // auto iter = enactor_slices[0].enactor_stats.iteration;
-        // if (All_Done(this -> enactor[0], gpu_num)) {
-        //     if(iter > 1) {
-        //         return false;
-        //     } else {
-        //         return true;
-        //     }
-        // } else {
-        //     if(iter < 0) {
-        //         return true;
-        //     } else {
-        //         return false;
-        //     }
-        // }
     }
 };
 
