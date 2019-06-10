@@ -138,6 +138,12 @@ struct CCIterationLoop : public IterationLoopBase
             // ptr_jump_op could have modified vertex_flag,
             // move it back to the HOST
             GUARD_CU(vertex_flag.Move(util::DEVICE, util::HOST));
+
+            // SDP, not sure why we need to (if we need to) synchronize here?
+            // Could be because of the Move directly above, but then why didn't we
+            // sync with the Move from HOST to DEVICE at the top of the while loop?
+            // Old API does this.
+            GUARD_CU2(cudaStreamSynchronize(stream), "cudaStreamSynchronize failed");
         }
         
         return retval;
