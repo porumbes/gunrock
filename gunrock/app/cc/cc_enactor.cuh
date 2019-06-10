@@ -146,6 +146,15 @@ struct CCIterationLoop : public IterationLoopBase
             GUARD_CU2(cudaStreamSynchronize(stream), "cudaStreamSynchronize failed");
         }
         
+        // SDP, not really sure what this is about.
+        // Should this be more of a stop condition? An optimization?
+        if (data_slice.turn > 1 && 
+            (this -> enactor -> problem -> edges / 3 > this -> enactor -> problem -> nodes))
+        {
+            enactor_stats.iteration = data_slice.turn;
+            return;
+        }
+
         return retval;
     }
 
