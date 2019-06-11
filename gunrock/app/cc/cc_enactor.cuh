@@ -371,8 +371,21 @@ struct CCIterationLoop : public IterationLoopBase
             // SDP, figure out how to incorporate
             // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;
 
+            //
+            // Update Mask
+            // 
+            masks.ForAll(update_mask_op,
+                         graph.nodes,
+                         util::DEVICE,
+                         oprtr_parameters.stream);
+
+            // SDP, figure out how to incorporate
+            // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;
         }
 
+        // SDP, figure out how to incorporate
+        // enactor_stats->iteration = data_slice->turn;
+        
         return retval;
     }
 
