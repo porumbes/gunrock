@@ -106,6 +106,29 @@ struct CCIterationLoop : public IterationLoopBase
         // </TODO>
         
         //
+        // Hook Initialization
+        //
+        auto hook_init_op = [
+            tos,
+            component_ids
+        ] __host__ __device__ (VertexId *froms_, const SizeT &id)
+        {
+            VertexId from_node = froms_[id];
+            VertexId to_node   = tos[id];
+
+            VertexId max_node = from_node > to_node ? from_node : to_node;
+            VertexId min_node = from_node + to_node - max_node;
+
+            component_ids[max_node] = min_node;
+        }
+
+        // for every edge
+        froms.ForAll(hook_init_op,
+                     graph.edges,
+                     util::DEVICE,
+                     oprtr_parameters.stream);
+
+        //
         // Pointer Jumping
         //
         vertex_flag[0] = 0;
