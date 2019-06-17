@@ -123,10 +123,10 @@ struct CCIterationLoop : public IterationLoopBase
         }
 
         // for every edge
-        froms.ForAll(hook_init_op,
-                     graph.edges,
-                     util::DEVICE,
-                     oprtr_parameters.stream);
+        GUARD_CU(froms.ForAll(hook_init_op,
+                             graph.edges,
+                             util::DEVICE,
+                             oprtr_parameters.stream));
 
         //
         // Pointer Jumping
@@ -151,10 +151,10 @@ struct CCIterationLoop : public IterationLoopBase
                 }
             }
 
-            component_ids.ForAll(ptr_jump_op,
-                                 graph.nodes,
-                                 util::DEVICE,
-                                 oprtr_parameters.stream);
+            GUARD_CU(component_ids.ForAll(ptr_jump_op,
+                                          graph.nodes,
+                                          util::DEVICE,
+                                          oprtr_parameters.stream));
 
             // SDP not sure what to do about this type of stuff
             // what does queue_reset = false actually do?
@@ -211,10 +211,10 @@ struct CCIterationLoop : public IterationLoopBase
             masks_[src] = (parent == id) ? 0 : 1;
         };
 
-        masks.ForAll(update_mask_op,
-                     graph.nodes,
-                     util::DEVICE,
-                     oprtr_parameters.stream);
+        GUARD_CU(masks.ForAll(update_mask_op,
+                              graph.nodes,
+                              util::DEVICE,
+                              oprtr_parameters.stream) );
 
         // SDP, figure out how to incorporate the following:
         // if (enactor -> debug && (enactor_stats->retval = 
@@ -274,10 +274,10 @@ struct CCIterationLoop : public IterationLoopBase
 
             };
 
-            marks.ForAll(hook_max_op,
-                         graph.edges,
-                         util::DEVICE,
-                         oprtr_parameters.stream);
+            GUARD_CU(marks.ForAll(hook_max_op,
+                                  graph.edges,
+                                  util::DEVICE,
+                                  oprtr_parameters.stream));
 
             // hook_max_op could have modified edge_flag,
             // move it back to the HOST
@@ -342,10 +342,10 @@ struct CCIterationLoop : public IterationLoopBase
                     }
                 };
 
-                component_ids.ForAll(ptr_jump_mask_op,
-                                     graph.nodes,
-                                     util::DEVICE,
-                                     oprtr_parameters.stream);
+                GUARD_CU(component_ids.ForAll(ptr_jump_mask_op,
+                                              graph.nodes,
+                                              util::DEVICE,
+                                              oprtr_parameters.stream));
 
                 // ptr_jump_mask_op could have modified vertex_flag,
                 // move it back to the HOST
@@ -386,10 +386,10 @@ struct CCIterationLoop : public IterationLoopBase
                 }
             }
 
-            component_ids.ForAll(ptr_jump_unmask,
-                                 graph.nodes,
-                                 util::DEVICE,
-                                 oprtr_parameters.stream);
+            GUARD_CU(component_ids.ForAll(ptr_jump_unmask,
+                                          graph.nodes,
+                                          util::DEVICE,
+                                          oprtr_parameters.stream));
 
             // SDP, figure out how to incorporate
             // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;
@@ -397,10 +397,10 @@ struct CCIterationLoop : public IterationLoopBase
             //
             // Update Mask
             // 
-            masks.ForAll(update_mask_op,
-                         graph.nodes,
-                         util::DEVICE,
-                         oprtr_parameters.stream);
+            GUARD_CU(masks.ForAll(update_mask_op,
+                                 graph.nodes,
+                                 util::DEVICE,
+                                 oprtr_parameters.stream));
 
             // SDP, figure out how to incorporate
             // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;
