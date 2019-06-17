@@ -164,7 +164,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
 
 	        GUARD_CU(component_ids         .Allocate(sub_graph.nodes, util::DEVICE));
 	        GUARD_CU(masks                 .Allocate(sub_graph.nodes, util::DEVICE));
-            GUARD_CU(marks                 .Allocate(sub_graph.edge, util::DEVICE));	        
+            GUARD_CU(marks                 .Allocate(sub_graph.edges, util::DEVICE));	        
 	        GUARD_CU(vertex_flag           .Allocate(1, util::HOST | util::DEVICE));
 	        GUARD_CU(edge_flag             .Allocate(1, util::HOST | util::DEVICE));
 	        GUARD_CU(vertex_associate_ins  .Allocate(num_gpus, util::HOST | util::DEVICE));
