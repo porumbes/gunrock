@@ -175,10 +175,9 @@ struct CCIterationLoop : public IterationLoopBase
         
         // SDP, not really sure what this is about.
         // Should this be more of a stop condition? An optimization?
-        if (data_slice.turn > 1 && 
-            (this -> enactor -> problem -> edges / 3 > this -> enactor -> problem -> nodes))
+        if (iteration > 1 && 
+            (graph.edges / 3 > graph.nodes))
         {
-            enactor_stats.iteration = data_slice.turn;
             return;
         }
 
