@@ -202,7 +202,7 @@ struct CCIterationLoop : public IterationLoopBase
         // all template parameters are <int, int, int>. Simple answer is yes
         // in general. Should we be casting? What happens if VertexID is a float?
         // Is that even possible for CC? 
-        auto update_mask_op = [ 
+        auto update_mask_op = [ // SDP, masks_ tracks if the given id is a root node
             component_ids
         ] __host__ __device__ (signed char *masks_, const SizeT &id)
         {
