@@ -241,6 +241,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             // Allocate output component_ids if necessary
             //util::MemsetIdxKernel<<<128, 128>>>(component_ids .GetPointer(util::DEVICE), nodes);
             GUARD_CU(component_ids.ForAll([]__host__ __device__ (VertexId *component_ids_, const SizeT &id){
+                    // SDP initialize every node to its own component id
                     component_ids_[id] = id;
                 }, nodes, util::DEVICE, this -> stream));
 
