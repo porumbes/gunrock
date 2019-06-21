@@ -34,7 +34,7 @@ namespace ld {
         cg,                 // cache global
         ca,                 // cache all
         cs,                 // cache streaming
-        
+
         LIMIT
     };
 
@@ -239,4 +239,3 @@ struct ModifiedLoad
 } // namespace io
 } // namespace util
 } // namespace gunrock
-

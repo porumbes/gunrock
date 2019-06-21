@@ -29,14 +29,22 @@ bin/
 eval/
 
 # Ignore doc generated files
-doc/warn.log
-doc/html
+doxygen/warn.log
+doxygen/html
 
 # Ignore text files under tests directories
-tests/*/*.txt
+unittests/*/*.txt
+examples/*/*.txt
+
+# exceptions for ignore
+!unittests/*/CMakeLists.txt
+!examples/*/CMakeLists.txt
 
 # Ignore vim temp files
 *.sw~
 
 # Ignore cmake configure_file() files
 gunrock/util/gitsha1.c
+
+# Ignore build directory
+build

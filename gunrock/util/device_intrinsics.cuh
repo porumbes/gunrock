@@ -12,94 +12,115 @@
  * @brief Common device intrinsics (potentially specialized by architecture)
  */
 
-//#pragma once
-
-#ifndef DEVICE_INTRINSICS_CUH
-#define DEVICE_INTRINSICS_CUH
+#pragma once
 
 #include <limits>
+#include <atomic>
 #include <gunrock/util/cuda_properties.cuh>
 //#include <gunrock/util/types.cuh>
 
-#define MEMBERMASK 0xffffffffu
-#define WARPSIZE 32
+#ifndef MEMBERBASK
+  #define MEMBERMASK 0xffffffffu
+#endif
+
+#ifndef WARPSIZE
+  #define WARPSIZE 32
+#endif
+
+#if (__CUDACC_VER_MAJOR__ >= 9 && __CUDA_ARCH__ >= 300) && !defined(USE_SHFL_SYNC)
+  #define USE_SHFL_SYNC
+#endif
 
 // CUDA 9 warp shuffles (device intrinsics)
 template <typename T>
 __device__ static __forceinline__
 T _shfl_up(T var, unsigned int delta, int width=WARPSIZE, unsigned mask=MEMBERMASK)
 {
-  //int first_lane = (WARPSIZE-width) << 8;
-#if __CUDACC_VER_MAJOR__ < 9
-  return __shfl_up(var, delta, width);
+#ifdef USE_SHFL_SYNC
+  var = __shfl_up_sync(mask, var, delta, width);
 #else
-  return __shfl_up_sync(mask, var, delta, width);
+#if ( __CUDA_ARCH__ >= 300)
+  var = __shfl_up(var, delta, width);
 #endif
+#endif
+  return var;
 }
 
 template <typename T>
 __device__ static __forceinline__
 T _shfl_down(T var, unsigned int delta, int width=WARPSIZE, unsigned mask=MEMBERMASK)
 {
-  //int last_lane = ((WARPSIZE-width) << 8) | 0x1f;
-#if __CUDACC_VER_MAJOR__ < 9
-  return __shfl_down(var, delta, width);
+#ifdef USE_SHFL_SYNC
+  var = __shfl_down_sync(mask, var, delta, width);
 #else
-  return __shfl_down_sync(mask, var, delta, width);
+#if ( __CUDA_ARCH__ >= 300)
+  var = __shfl_down(var, delta, width);
 #endif
+#endif
+  return var;
 }
 
 template <typename T>
 __device__ static __forceinline__
 T _shfl_xor(T var, int lane_mask, int width=WARPSIZE, unsigned mask = MEMBERMASK)
 {
-  //int last_lane = ((WARPSIZE-width) << 8) | 0x1f;
-#if __CUDACC_VER_MAJOR__ < 9
-  return __shfl_xor(var, lane_mask, width);
+#ifdef USE_SHFL_SYNC
+  var = __shfl_xor_sync(mask, var, lane_mask, width);
 #else
-  return __shfl_xor_sync(mask, var, lane_mask, width);
+#if ( __CUDA_ARCH__ >= 300)
+  var = __shfl_xor(var, lane_mask, width);
 #endif
+#endif
+  return var;
 }
 
 template <typename T>
 __device__ static __forceinline__
 T _shfl(T var, int source_lane, int width=WARPSIZE, unsigned mask=MEMBERMASK)
 {
-  //int last_lane = ((WARPSIZE-width) << 8) | 0x1f;
-#if __CUDACC_VER_MAJOR__ < 9
-  return __shfl(var, source_lane, width);
+#ifdef USE_SHFL_SYNC
+  var = __shfl_sync(mask, var, source_lane, width);
 #else
-  return __shfl_sync(mask, var, source_lane, width);
+#if ( __CUDA_ARCH__ >= 300)
+  var = __shfl(var, source_lane, width);
 #endif
+#endif
+  return var;
 }
 
 __device__ static __forceinline__
 unsigned _ballot(int predicate, unsigned mask=MEMBERMASK)
 {
-#if __CUDACC_VER_MAJOR__ < 9
-  return __ballot(predicate);
-#else
+#ifdef USE_SHFL_SYNC
   return __ballot_sync(mask, predicate);
+#else
+#if ( __CUDA_ARCH__ >= 300)
+  return __ballot(predicate);
+#endif
 #endif
 }
 
 __device__ static __forceinline__
 int _any(int predicate, unsigned mask=MEMBERMASK)
 {
-#if __CUDACC_VER_MAJOR__ < 9
-  return __any(predicate);
-#else
+#ifdef USE_SHFL_SYNC
   return __any_sync(mask, predicate);
+#else
+#if ( __CUDA_ARCH__ >= 300)
+  return __any(predicate);
+#endif
 #endif
 }
 
 __device__ static __forceinline__
 int _all(int predicate, unsigned mask=MEMBERMASK)
 {
-#if __CUDACC_VER_MAJOR__ < 9
-  return __all(predicate);
-#else
+#ifdef USE_SHFL_SYNC
   return __all_sync(mask, predicate);
+#else
+#if ( __CUDA_ARCH__ >= 300)
+  return __all(predicate);
+#endif
 #endif
 }
 
@@ -177,16 +198,21 @@ __device__ static unsigned long atomicAdd(unsigned long *addr, unsigned long val
 }*/
 #endif
 
+//#if UINT64_MAX != ULLONG_MAX
 __device__ static uint64_t atomicMin(uint64_t* addr, uint64_t val)
 {
-    unsigned long long int old = (unsigned long long int)val;
-    unsigned long long int expected;
-    do {
-        expected = old;
-        old = atomicCAS((unsigned long long int*)addr, val, (unsigned long long int)val);
-    } while (expected != old);
-    return old;
+    return (uint64_t)atomicMin((unsigned long long int*)addr, (unsigned long long int)val);
+//    unsigned long long int old = (unsigned long long int)(*addr);
+//    unsigned long long int expected;
+//    do {
+//        expected = old;
+//        old = atomicCAS(
+//            (unsigned long long int*)addr, 
+//            expected, min((unsigned long long int)val, expected));
+//    } while (expected != old);
+//    return old;
 }
+//#endif
 
 __device__ static float atomicMin(float* addr, float val)
 {
@@ -268,6 +294,27 @@ T _atomicAdd(T* ptr, const T &val)
         ptr[0] += val;
     }
     return retval;
+#endif
+}
+
+template <typename T>
+__device__ __host__ __forceinline__
+T _atomicMin(T* ptr, const T &val)
+{
+#ifdef __CUDA_ARCH__
+    return atomicMin(ptr, val);
+#else
+    std::atomic<T> *atomic_ptr = reinterpret_cast<std::atomic<T>*>(ptr);
+
+    T old_val = *ptr;
+    while (true)
+    {
+        bool is_equal = std::atomic_compare_exchange_strong(atomic_ptr,
+            &old_val, min(old_val, val));
+        if (is_equal)
+            break;
+    }
+    return old_val;
 #endif
 }
 
@@ -373,7 +420,6 @@ __device__ int BinarySearch(KeyType i, ArrayType *queue)
 } // namespace util
 } // namespace gunrock
 
-#endif
 // Leave this at the end of the file
 // Local Variables:
 // mode:c++

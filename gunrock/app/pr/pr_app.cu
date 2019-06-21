@@ -11,16 +11,8 @@
  * @brief Gunrock PageRank application
  */
 
-#include <gunrock/gunrock.h>
-
-// Utilities and correctness-checking
-#include <gunrock/util/test_utils.cuh>
-#include <gunrock/util/type_limits.cuh>
-
-// Graph definations
-#include <gunrock/graphio/graphio.cuh>
-#include <gunrock/app/app_base.cuh>
-#include <gunrock/app/test_base.cuh>
+// <primitive>_app.cuh includes
+#include <gunrock/app/app.cuh>
 
 // page-rank includes
 #include <gunrock/app/pr/pr_enactor.cuh>
@@ -348,7 +340,7 @@ double pagerank(
     csr.column_indices.SetPointer((int*)col_indices, num_edges, gunrock::util::HOST);
     // csr.Move(gunrock::util::HOST, gunrock::util::DEVICE);
 
-    gunrock::util::Location target = gunrock::util::HOST;    
+    gunrock::util::Location target = gunrock::util::HOST;
 
     GraphT graph;
     graph.FromCsr(csr, target, 0, quiet, true);
@@ -359,8 +351,8 @@ double pagerank(
     double elapsed_time = gunrock_pagerank(parameters, graph, node_ids, ranks);
 
     // Cleanup
-    graph.Release();
-    srcs.clear();
+    // graph.Release();
+    // srcs.clear();
 
     return elapsed_time;
 }
@@ -411,16 +403,6 @@ double pagerank(
  * @param[out] pagerank    Return PageRank scores per node
  * \return     double      Return accumulated elapsed times for all runs
  */
-/*
-template <
-    typename VertexT = int,
-    typename SizeT   = int,
-    typename ValueT  = float>
-
-*/
-
-//            argument types are: (const int, const int, const int *, const int *, int, int *, int **, float **)
-
 double pagerank(
     const int         num_nodes,
     const int         num_edges,

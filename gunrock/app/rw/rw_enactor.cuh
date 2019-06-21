@@ -24,7 +24,6 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-
 namespace gunrock {
 namespace app {
 namespace rw {

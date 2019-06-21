@@ -26,16 +26,20 @@ namespace LB_CULL {
  *
  * Parameterizations of this type encapsulate our kernel-tuning parameters
  *
- * Kernels can be specialized for problem-type, SM-version, etc. by parameterizing
- * them with different performance-tuned parameterizations of this type.  By
- * incorporating this type into the kernel code itself, we guide the compiler in
- * expanding/unrolling the kernel code for specific architectures and problem
- * types.
+ * Kernels can be specialized for problem-type, SM-version, etc. by
+ * parameterizing them with different performance-tuned parameterizations of
+ * this type.  By incorporating this type into the kernel code itself, we guide
+ * the compiler in expanding/unrolling the kernel code for specific
+ * architectures and problem types.
  *
  * @tparam _ProblemData                 Problem data type.
- * @tparam _CUDA_ARCH                   CUDA SM architecture to generate code for.
- * @tparam _INSTRUMENT                  Whether or not we want instrumentation logic generated
- * @tparam _MIN_CTA_OCCUPANCY           Lower bound on number of CTAs to have resident per SM (influences per-CTA smem cache sizes and register allocation/spills).
+ * @tparam _CUDA_ARCH                   CUDA SM architecture to generate code
+ * for.
+ * @tparam _INSTRUMENT                  Whether or not we want instrumentation
+ * logic generated
+ * @tparam _MIN_CTA_OCCUPANCY           Lower bound on number of CTAs to have
+ * resident per SM (influences per-CTA smem cache sizes and register
+ * allocation/spills).
  * @tparam _LOG_THREADS                 Number of threads per CTA (log).
  */
 template <
@@ -200,14 +204,13 @@ public:
         CTA_OCCUPANCY                   = GR_MIN(_MAX_CTA_OCCUPANCY, GR_MIN(GR_SM_CTAS(CUDA_ARCH), GR_MIN(THREAD_OCCUPANCY, SMEM_OCCUPANCY))),
 
         VALID                           = (CTA_OCCUPANCY > 0),
-        ELEMENT_ID_MASK	                = ~(1ULL<<(sizeof(VertexT)*8-2)),
+        //ELEMENT_ID_MASK	                = ~(1ULL<<(sizeof(VertexT)*8-2)),
     };
 };
 
-
-} // namespace edge_map_partitioned
-} // namespace oprtr
-} // namespace gunrock
+}  // namespace edge_map_partitioned_cull
+}  // namespace oprtr
+}  // namespace gunrock
 
 // Leave this at the end of the file
 // Local Variables:

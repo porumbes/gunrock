@@ -47,11 +47,10 @@ if (METIS_LIBRARY)
 endif()
 # end /* Link Metis and Boost */
 
-# begin /* Link OpenMP (libomp) for OSX */
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    link_directories("/opt/local/lib")
-    target_link_libraries(${PROJECT_NAME} "omp")
-  endif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-# end /* Link OpenMP (libomp) for OSX */
+# begin /* Simple ctest that tests cmd help */
+string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UP)
+add_test(NAME TEST_${PROJECT_NAME_UP}_CMD COMMAND ${PROJECT_NAME} --help)
+set_tests_properties(TEST_${PROJECT_NAME_UP}_CMD PROPERTIES 
+PASS_REGULAR_EXPRESSION "Required arguments:")
+# end /* Simple ctest that tests cmd help */
+

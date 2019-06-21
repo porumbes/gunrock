@@ -30,48 +30,56 @@ namespace advance {
  *
  * Parameterizations of this type encapsulate our kernel-tuning parameters
  *
- * Kernels can be specialized for problem-type, SM-version, etc. by parameterizing
- * them with different performance-tuned parameterizations of this type.  By
- * incorporating this type into the kernel code itself, we guide the compiler in
- * expanding/unrolling the kernel code for specific architectures and problem
- * types.
+ * Kernels can be specialized for problem-type, SM-version, etc. by
+ * parameterizing them with different performance-tuned parameterizations of
+ * this type.  By incorporating this type into the kernel code itself, we guide
+ * the compiler in expanding/unrolling the kernel code for specific
+ * architectures and problem types.
  *
  * @tparam _ProblemData                 Problem data type.
- * @tparam _CUDA_ARCH                   CUDA SM architecture to generate code for.
- * @tparam _INSTRUMENT                  Whether or not we want instrumentation logic generated
- * @tparam _MIN_CTA_OCCUPANCY           Lower bound on number of CTAs to have resident per SM (influences per-CTA smem cache sizes and register allocation/spills).
+ * @tparam _CUDA_ARCH                   CUDA SM architecture to generate code
+ * for.
+ * @tparam _INSTRUMENT                  Whether or not we want instrumentation
+ * logic generated
+ * @tparam _MIN_CTA_OCCUPANCY           Lower bound on number of CTAs to have
+ * resident per SM (influences per-CTA smem cache sizes and register
+ * allocation/spills).
  * @tparam _LOG_THREADS                 Number of threads per CTA (log).
  * @tparam _LOG_BLOCKS                  Number of blocks per grid (log).
- * @tparam _LIGHT_EDGE_THRESHOLD        Reserved for switching between two kernels in load balanced advance mode.
- * @tparam _LOG_LOAD_VEC_SIZE           Number of incoming frontier vertex-ids to dequeue in a single load (log).
- * @tparam _LOG_LOADS_PER_TILE          Number of such loads that constitute a tile of incoming frontier vertex-ids (log)
- * @tparam _LOG_RAKING_THREADS          Number of raking threads to use for prefix sum (log), range [5, LOG_THREADS]
- * @tparam _WARP_GATHER_THRESHOLD       Adjacency-list length above which we expand an that list using coarser-grained warp-based cooperative expansion
- *                                      (below which we perform fine-grained scan-based expansion)
- * @tparam _CTA_GATHER_THRESHOLD        Adjacency-list length above which we expand an that list using coarsest-grained CTA-based cooperative expansion
- *                                      (below which we perform warp-based expansion)
- * @tparam _LOG_SCHEDULE_GRANULARITY    The scheduling granularity of incoming frontier tiles (for even-share work distribution only) (log)
- * @tparam _ADVANCE_MODE                Enum type which shows the type of advance operator we use: TWC_FORWARD, TWC_BACKWARD, LB)
+ * @tparam _LIGHT_EDGE_THRESHOLD        Reserved for switching between two
+ * kernels in load balanced advance mode.
+ * @tparam _LOG_LOAD_VEC_SIZE           Number of incoming frontier vertex-ids
+ * to dequeue in a single load (log).
+ * @tparam _LOG_LOADS_PER_TILE          Number of such loads that constitute a
+ * tile of incoming frontier vertex-ids (log)
+ * @tparam _LOG_RAKING_THREADS          Number of raking threads to use for
+ * prefix sum (log), range [5, LOG_THREADS]
+ * @tparam _WARP_GATHER_THRESHOLD       Adjacency-list length above which we
+ * expand an that list using coarser-grained warp-based cooperative expansion
+ *                                      (below which we perform fine-grained
+ * scan-based expansion)
+ * @tparam _CTA_GATHER_THRESHOLD        Adjacency-list length above which we
+ * expand an that list using coarsest-grained CTA-based cooperative expansion
+ *                                      (below which we perform warp-based
+ * expansion)
+ * @tparam _LOG_SCHEDULE_GRANULARITY    The scheduling granularity of incoming
+ * frontier tiles (for even-share work distribution only) (log)
+ * @tparam _ADVANCE_MODE                Enum type which shows the type of
+ * advance operator we use: TWC_FORWARD, TWC_BACKWARD, LB)
  */
-template <
-    typename _Problem,
-    // Machine parameters
-    int _CUDA_ARCH,
-    // Behavioral control parameters
-    //bool _INSTRUMENT,
-    // Tunable parameters
-    int _MAX_CTA_OCCUPANCY,
-    int _LOG_THREADS,
-    int _LOG_BLOCKS,
-    int _LIGHT_EDGE_THRESHOLD,
-    int _LOG_LOAD_VEC_SIZE,
-    int _LOG_LOADS_PER_TILE,
-    int _LOG_RAKING_THREADS,
-    int _WARP_GATHER_THRESHOLD,
-    int _CTA_GATHER_THRESHOLD,
-    int _LOG_SCHEDULE_GRANULARITY,
-    // Advance Mode and Type parameters
-    MODE _ADVANCE_MODE>
+template <typename _Problem,
+          // Machine parameters
+          int _CUDA_ARCH,
+          // Behavioral control parameters
+          // bool _INSTRUMENT,
+          // Tunable parameters
+          int _MAX_CTA_OCCUPANCY, int _LOG_THREADS, int _LOG_BLOCKS,
+          int _LIGHT_EDGE_THRESHOLD, int _LOG_LOAD_VEC_SIZE,
+          int _LOG_LOADS_PER_TILE, int _LOG_RAKING_THREADS,
+          int _WARP_GATHER_THRESHOLD, int _CTA_GATHER_THRESHOLD,
+          int _LOG_SCHEDULE_GRANULARITY,
+          // Advance Mode and Type parameters
+          MODE _ADVANCE_MODE>
 struct KernelPolicy {
 
     typedef _Problem                    Problem;
@@ -174,6 +182,6 @@ struct KernelPolicy {
             EDGES                   ::CTA_OCCUPANCY : 0)))))));
 };
 
-} //advance
-} //oprtr
-} //gunrock
+}  // namespace advance
+}  // namespace oprtr
+}  // namespace gunrock

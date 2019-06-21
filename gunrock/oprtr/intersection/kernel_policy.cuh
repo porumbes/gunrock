@@ -94,13 +94,13 @@ struct KernelPolicy
         BLOCKS                          = 1 << LOG_BLOCKS,
         NL_SIZE_THRESHOLD               = 1 << _NL_SIZE_THRESHOLD,
     };
-    
+
     /**
      * @brief Shared memory storage type for the CTA
      */
     struct SmemStorage
     {
-        enum { 
+        enum {
             MAX_SCRATCH_BYTES_PER_CTA       = GR_SMEM_BYTES(CUDA_ARCH)/MIN_CTA_OCCUPANCY,
 
             SCRATCH_ELEMENT_SIZE            = sizeof(SizeT),

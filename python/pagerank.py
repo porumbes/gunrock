@@ -3,8 +3,7 @@
 from ctypes import *
 
 ### load gunrock shared library - libgunrock
-gunrock = cdll.LoadLibrary('../../build/lib/libgunrock.so')
-print ' generate stuff'
+gunrock = cdll.LoadLibrary('../build/lib/libgunrock.so')
 ### read in input CSR arrays from files
 row_list = [int(x.strip()) for x in open('toy_graph/row.txt')]
 col_list = [int(x.strip()) for x in open('toy_graph/col.txt')]

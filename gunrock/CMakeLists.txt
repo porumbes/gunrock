@@ -1,4 +1,7 @@
-# gunrock shared library cmake file
+# ------------------------------------------------------------------------
+#  Gunrock: Shared Library CMAKE files
+# ------------------------------------------------------------------------
+
 if(RAPIDJSON_FOUND)
   include_directories(${RAPIDJSON_INCLUDEDIR})
 else()
@@ -25,11 +28,14 @@ set(HFILES_PUBLIC
   gunrock.h)
 
 set(CUFILES
-  #app/bfs/bfs_app.cu
+  # TODO: Add support for remaining primitives
+  ##app/bfs/bfs_app.cu
   #app/bc/bc_app.cu
-  #app/cc/cc_app.cu
+  ##app/cc/cc_app.cu
   app/pr/pr_app.cu
   #app/sssp/sssp_app.cu
+  #app/louvain/louvain_app.cu
+  #app/color/color_app.cu
   util/test_utils.cu
   util/error_utils.cu
   util/misc_utils.cu
@@ -37,7 +43,7 @@ set(CUFILES
   ${mgpu_SOURCE_FILES}
   util/gitsha1.c)
 
-cuda_add_library(gunrock ${LIB_TYPE}
+CUDA_ADD_LIBRARY(gunrock ${LIB_TYPE}
   ${HFILES}
   ${CUHFILES}
   ${HFILES_PUBLIC}
@@ -48,12 +54,3 @@ target_link_libraries(gunrock ${Boost_LIBRARIES})
 if (METIS_LIBRARY)
 	target_link_libraries(gunrock ${METIS_LIBRARY})
 endif ()
-
-# OpenMP on OS X/clang
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    link_directories("/opt/local/lib" "/opt/local/lib/libomp")
-    include_directories("/opt/local/include" "/opt/local/include/libomp")
-    target_link_libraries(gunrock "omp")
-  endif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

@@ -5,7 +5,6 @@
 // in the root directory of this source distribution.
 // ----------------------------------------------------------------
 
-
 /**
  * @file
  * cta.cuh

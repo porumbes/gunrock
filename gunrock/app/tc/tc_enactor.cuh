@@ -83,13 +83,13 @@ struct TCIterationLoop : public IterationLoopBase
             VertexT &comm_node, VertexT &edge) -> bool
         {
             atomicAdd(tc_counts + comm_node,  1);
-            
+
             return true;
         };
         frontier.queue_length = graph.edges;
         frontier.queue_reset  = true;
         GUARD_CU(oprtr::Intersect<oprtr::OprtrType_V2V>(
-            graph.csr(), frontier.V_Q(), frontier.Next_V_Q(), 
+            graph.csr(), frontier.V_Q(), frontier.Next_V_Q(),
             oprtr_parameters, intersect_op));
         //tc_counts = tc_counts/3
 
@@ -289,8 +289,8 @@ public:
         GUARD_CU(BaseEnactor::Reset(target));
         for (int gpu = 0; gpu < this->num_gpus; gpu++)
         {
-           if ((this->num_gpus == 1)) 
-            //|| (gpu == this->problem->org_graph->GpT::partition_table[src])) 
+           if ((this->num_gpus == 1))
+            //|| (gpu == this->problem->org_graph->GpT::partition_table[src]))
            {
                this -> thread_slices[gpu].init_size = num_srcs;
                for (int peer_ = 0; peer_ < this -> num_gpus; peer_++) {

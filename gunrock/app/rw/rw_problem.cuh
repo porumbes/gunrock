@@ -7,7 +7,7 @@
 
 /**
  * @file
- * RW_problem.cuh
+ * rw_problem.cuh
  *
  * @brief GPU Storage management Structure for RW Problem Data
  */
@@ -19,7 +19,6 @@
 namespace gunrock {
 namespace app {
 namespace rw {
-
 
 /**
  * @brief Speciflying parameters for RW Problem

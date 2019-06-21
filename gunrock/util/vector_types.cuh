@@ -141,7 +141,6 @@ struct VecType
 //    typedef VecType<T, 4> Type;
 //};
 
-
 /**
  * Macro for expanding partially-specialized built-in vector types
  */
@@ -150,19 +149,19 @@ struct VecType
   template<> struct VecType<base_type, 2> { typedef short_type##2 Type; };      \
   template<> struct VecType<base_type, 4> { typedef short_type##4 Type; };
 
-GR_DEFINE_VECTOR_TYPE(char,               char)
-GR_DEFINE_VECTOR_TYPE(signed char,        char)
-GR_DEFINE_VECTOR_TYPE(short,              short)
-GR_DEFINE_VECTOR_TYPE(int,                int)
-GR_DEFINE_VECTOR_TYPE(long,               long)
-GR_DEFINE_VECTOR_TYPE(long long,          longlong)
-GR_DEFINE_VECTOR_TYPE(unsigned char,      uchar)
-GR_DEFINE_VECTOR_TYPE(unsigned short,     ushort)
-GR_DEFINE_VECTOR_TYPE(unsigned int,       uint)
-GR_DEFINE_VECTOR_TYPE(unsigned long,      ulong)
+GR_DEFINE_VECTOR_TYPE(char, char)
+GR_DEFINE_VECTOR_TYPE(signed char, char)
+GR_DEFINE_VECTOR_TYPE(short, short)
+GR_DEFINE_VECTOR_TYPE(int, int)
+GR_DEFINE_VECTOR_TYPE(long, long)
+GR_DEFINE_VECTOR_TYPE(long long, longlong)
+GR_DEFINE_VECTOR_TYPE(unsigned char, uchar)
+GR_DEFINE_VECTOR_TYPE(unsigned short, ushort)
+GR_DEFINE_VECTOR_TYPE(unsigned int, uint)
+GR_DEFINE_VECTOR_TYPE(unsigned long, ulong)
 GR_DEFINE_VECTOR_TYPE(unsigned long long, ulonglong)
-GR_DEFINE_VECTOR_TYPE(float,              float)
-GR_DEFINE_VECTOR_TYPE(double,             double)
+GR_DEFINE_VECTOR_TYPE(float, float)
+GR_DEFINE_VECTOR_TYPE(double, double)
 
 #undef GR_DEFINE_VECTOR_TYPE
 */

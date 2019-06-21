@@ -5,7 +5,6 @@
 // in the root directory of this source distribution.
 // ----------------------------------------------------------------
 
-
 /**
  * @file
  * cta.cuh
@@ -15,7 +14,7 @@
 
 #pragma once
 
-//TODO: use CUB for SOA scan
+// TODO: use CUB for SOA scan
 
 namespace gunrock {
 namespace oprtr {

@@ -710,16 +710,51 @@ public:
             json_spirit::pretty_print);
         //printf("\n");
     }
+    csr_ptr = &csr_ref;  // set graph pointer
+    InitBase(algorithm_name, args);
+    if (info["destination_vertex"].get_int64() < 0 ||
+        info["destination_vertex"].get_int64() >= (int)csr_ref.nodes)
+      info["destination_vertex"] =
+          (int)csr_ref.nodes - 1;  // if not set or something is wrong, set it
+                                   // to the largest vertex ID
+    info["stddev_degrees"] = (float)csr_ref.GetStddevDegree();
+    info["num_vertices"] = (int64_t)csr_ref.nodes;
+    info["num_edges"] = (int64_t)csr_ref.edges;
+  }
 
-    /*
-     * @brief Writes the JSON structure to filename (command line --jsonfile).
-     */
-    void JsonFile()
+  /**
+   * @brief Initialization process for Info.
+   *
+   * @param[in] algorithm_name Algorithm name.
+   * @param[in] args Command line arguments.
+   * @param[in] csr_ref Reference to the CSR structure.
+   * @param[in] csc_ref Reference to the CSC structure.
+   */
+  void Init(std::string algorithm_name, util::CommandLineArgs &args,
+            Csr<VertexId, SizeT, Value> &csr_ref,
+            Csr<VertexId, SizeT, Value> &csc_ref) {
+    typedef Coo<VertexId, Value> EdgeTupleType;
+    // Special initialization for SM problem
+    if (algorithm_name == "SM") return Init_SM(args, csr_ref, csc_ref);
+
+    // load or generate input graph
+    if (info["edge_value"].get_bool()) {
+      if (info["undirected"].get_bool()) {
+        LoadGraph<true, false>(args, csr_ref);  // with weigh values
+        csc_ref.FromCsr(csr_ref);
+      } else {
+        LoadGraph<true, false>(args, csr_ref);  // load CSR input
+        csc_ref.template CsrToCsc<EdgeTupleType>(csc_ref, csr_ref);
+      }
+    } else  // does not need weight values
     {
-        std::ofstream of(ofname.data());
-        json_spirit::write_stream(
-            json_spirit::mValue(info), of,
-            json_spirit::pretty_print);
+      if (info["undirected"].get_bool()) {
+        LoadGraph<false, false>(args, csr_ref);  // without weights
+        csc_ref.FromCsr(csr_ref);
+      } else {
+        LoadGraph<false, false>(args, csr_ref);  // without weights
+        csc_ref.template CsrToCsc<EdgeTupleType>(csc_ref, csr_ref);
+      }
     }
 
     /**
@@ -982,7 +1017,7 @@ public:
             {
                 GUARD_CU(util::SetDevice(my_gpu_idx));
             }
-            GUARD_CU(cudaThreadSynchronize());
+            GUARD_CU(cudaDeviceSynchronize());
 
             for (int peer = 0; peer < num_gpus; ++peer)
             {
@@ -1038,8 +1073,9 @@ public:
         }
         #endif
 
-        double avg_duty = (total_lifetimes > 0) ?
-            double(total_runtimes) / total_lifetimes * 100.0 : 0.0f;
+    double avg_duty = (total_lifetimes > 0)
+                          ? double(total_runtimes) / total_lifetimes * 100.0
+                          : 0.0f;
 
         double elapsed = total_elapsed / num_runs;
         info["elapsed"] = elapsed;

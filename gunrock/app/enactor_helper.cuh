@@ -117,7 +117,7 @@ cudaError_t CheckSize(
     bool        keep_content = false)
 {
     cudaError_t retval = cudaSuccess;
-    
+
     if (array == NULL)
         return retval;
 

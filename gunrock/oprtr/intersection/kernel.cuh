@@ -130,7 +130,7 @@ struct Dispatch<FLAG, InKeyT, OutKeyT, SizeT, ValueT, VertexT, InterOpT, true>
                 VertexT dst_edge = __ldg(d_column_indices+dst_it);
                 while (src_it < src_end && dst_it < dst_end) {
                     int diff = src_edge - dst_edge;
-                    if (diff == 0) 
+                    if (diff == 0)
                     {
                         inter_op(src_edge, idx);
                     }
@@ -173,10 +173,10 @@ template <
     typename  VertexT,
     typename  InterOpT>
   __launch_bounds__ (
-	Dispatch<FLAG, InKeyT, OutKeyT, SizeT, 
+	Dispatch<FLAG, InKeyT, OutKeyT, SizeT,
         ValueT, VertexT, InterOpT, true>
-	    ::KernelPolicyT::THREADS, 
-	Dispatch<FLAG, InKeyT, OutKeyT, SizeT, 
+	    ::KernelPolicyT::THREADS,
+	Dispatch<FLAG, InKeyT, OutKeyT, SizeT,
         ValueT, VertexT, InterOpT, true>
 	    ::KernelPolicyT::CTA_OCCUPANCY)
   __global__
@@ -229,8 +229,8 @@ cudaError_t Launch(
     typedef typename ParametersT ::ValueT  ValueT;
     typedef typename ParametersT ::VertexT VertexT;
     typedef typename ParametersT ::LabelT LabelT;
-    typedef typename Dispatch<FLAG, InKeyT, 
-        OutKeyT, SizeT, ValueT, VertexT, InterOpT, 
+    typedef typename Dispatch<FLAG, InKeyT,
+        OutKeyT, SizeT, ValueT, VertexT, InterOpT,
 	true>::KernelPolicyT KernelPolicyT;
 
 
@@ -239,7 +239,7 @@ cudaError_t Launch(
                         >> (KernelPolicyT::LOG_THREADS + KernelPolicyT::LOG_BLOCKS);
     SizeT num_vertex = graph.nodes;
     SizeT num_edges  = graph.edges;
-    
+
     IntersectTwoSmallNL<FLAG, InKeyT, OutKeyT, SizeT, ValueT, VertexT, InterOpT>
     <<<KernelPolicyT::BLOCKS, KernelPolicyT::THREADS, 0, parameters.stream>>>(
             graph.CsrT::row_offsets.GetPointer(util::DEVICE),

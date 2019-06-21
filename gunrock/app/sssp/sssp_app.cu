@@ -11,15 +11,8 @@
  * @brief single-source shortest path (SSSP) application
  */
 
-#include <gunrock/gunrock.h>
-
-// Utilities and correctness-checking
-#include <gunrock/util/test_utils.cuh>
-
-// Graph definations
-#include <gunrock/graphio/graphio.cuh>
-#include <gunrock/app/app_base.cuh>
-#include <gunrock/app/test_base.cuh>
+// <primitive>_app.cuh includes
+#include <gunrock/app/app.cuh>
 
 // single-source shortest path includes
 #include <gunrock/app/sssp/sssp_enactor.cuh>
@@ -96,13 +89,10 @@ cudaError_t RunTests(
     // Allocate problem and enactor on GPU, and initialize them
     ProblemT problem(parameters);
     EnactorT enactor;
-    //util::PrintMsg("Before init");
     GUARD_CU(problem.Init(graph  , target));
     GUARD_CU(enactor.Init(problem, target));
-    //util::PrintMsg("After init");
     cpu_timer.Stop();
     parameters.Set("preprocess-time", cpu_timer.ElapsedMillis());
-    //info.preprocess_time = cpu_timer.ElapsedMillis();
 
     // perform SSSP
     VertexT src;
@@ -277,10 +267,9 @@ double sssp(
     GraphT graph;
     // Assign pointers into gunrock graph format
     graph.CsrT::Allocate(num_nodes, num_edges, gunrock::util::HOST);
-    graph.CsrT::row_offsets   .SetPointer(row_offsets, num_nodes + 1, gunrock::util::HOST);
-    graph.CsrT::column_indices.SetPointer(col_indices, num_edges, gunrock::util::HOST);
-    graph.CsrT::edge_values   .SetPointer(edge_values, num_edges, gunrock::util::HOST);
-    // graph.FromCsr(graph.csr(), true, quiet);
+    graph.CsrT::row_offsets   .SetPointer((SizeT*)row_offsets, num_nodes + 1, gunrock::util::HOST);
+    graph.CsrT::column_indices.SetPointer((VertexT*)col_indices, num_edges, gunrock::util::HOST);
+    graph.CsrT::edge_values   .SetPointer((GValueT*)edge_values, num_edges, gunrock::util::HOST);
     gunrock::graphio::LoadGraph(parameters, graph);
 
     // Run the SSSP
@@ -291,6 +280,34 @@ double sssp(
     srcs.clear();
 
     return elapsed_time;
+}
+
+/*
+ * @brief Simple C-interface take in graph as CSR format
+ * @param[in]  num_nodes   Number of veritces in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  row_offsets CSR-formatted graph input row offsets
+ * @param[in]  col_indices CSR-formatted graph input column indices
+ * @param[in]  edge_values CSR-formatted graph input edge weights
+ * @param[in]  source      Source to begin traverse
+ * @param[in]  mark_preds  Whether to output predecessor info
+ * @param[out] distances   Return shortest distance to source per vertex
+ * @param[out] preds       Return predecessors of each vertex
+ * \return     double      Return accumulated elapsed times for all runs
+ */
+double sssp(
+    const int        num_nodes,
+    const int        num_edges,
+    const int       *row_offsets,
+    const int       *col_indices,
+    const float     *edge_values,
+          int        source,
+    const bool       mark_pred,
+          float     *distances,
+          int       *preds)
+{
+  return sssp(num_nodes, num_edges, row_offsets, col_indices, edge_values,
+              1 /* num_runs */, &source, mark_pred, &distances, &preds);
 }
 
 // Leave this at the end of the file

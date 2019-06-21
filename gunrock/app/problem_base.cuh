@@ -103,7 +103,7 @@ struct DataSliceBase
         ProblemFlag     flag)
     {
         cudaError_t retval = cudaSuccess;
-                
+
         this -> num_gpus  = num_gpus;
         this -> gpu_idx   =  gpu_idx;
         this -> sub_graph = &sub_graph;
