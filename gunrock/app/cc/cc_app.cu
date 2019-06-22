@@ -6,9 +6,9 @@
 // ----------------------------------------------------------------------------
 
 /**
- * @file hello_app.cu
+ * @file cc_app.cu
  *
- * @brief Simple Gunrock Application
+ * @brief Connected Components Gunrock Application
  */
 
 #include <gunrock/gunrock.h>
@@ -17,16 +17,12 @@
 #include <gunrock/app/app_base.cuh>
 #include <gunrock/app/test_base.cuh>
 
-// <TODO> change includes
-#include <gunrock/app/hello/hello_enactor.cuh>
-#include <gunrock/app/hello/hello_test.cuh>
-// </TODO>
+#include <gunrock/app/cc/cc_enactor.cuh>
+#include <gunrock/app/cc/cc_test.cuh>
 
 namespace gunrock {
 namespace app {
-// <TODO> change namespace
-namespace hello {
-// </TODO>
+namespace cc {
 
 
 cudaError_t UseParameters(util::Parameters &parameters)
