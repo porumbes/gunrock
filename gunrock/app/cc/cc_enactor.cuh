@@ -611,7 +611,7 @@ public:
         BaseEnactor;
     typedef Enactor<Problem, ARRAY_FLAG, cudaHostRegisterFlag> 
         EnactorT;
-    typedef helloIterationLoop<EnactorT> 
+    typedef CCIterationLoop<EnactorT> 
         IterationT;
 
     Problem *problem;
