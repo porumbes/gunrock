@@ -76,19 +76,19 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
     struct DataSlice : BaseDataSlice
     {
         // device storage arrays
-        util::Array1D<SizeT, VertexId> component_ids; /**< Used for component id */
+        util::Array1D<SizeT, VertexT> component_ids; /**< Used for component id */
         util::Array1D<SizeT, signed char> masks;         /**< Size equals to node number, show if a node is the root */
         util::Array1D<SizeT, bool    > marks;         /**< Size equals to edge number, show if two vertices belong to the same component */
-        util::Array1D<SizeT, VertexId> froms;         /**< Size equals to edge number, from vertex of one edge */
-        util::Array1D<SizeT, VertexId> tos;           /**< Size equals to edge number, to vertex of one edge */
+        util::Array1D<SizeT, VertexT> froms;         /**< Size equals to edge number, from vertex of one edge */
+        util::Array1D<SizeT, VertexT> tos;           /**< Size equals to edge number, to vertex of one edge */
         util::Array1D<SizeT, int     > vertex_flag;   /**< Finish flag for per-vertex kernels in CC algorithm */
         util::Array1D<SizeT, int     > edge_flag;     /**< Finish flag for per-edge kernels in CC algorithm */
-        util::Array1D<SizeT, VertexId*> vertex_associate_ins;
+        util::Array1D<SizeT, VertexT*> vertex_associate_ins;
         int turn;
         bool has_change, previous_change;
         bool scanned_queue_computed;
-        VertexId *temp_vertex_out;
-        VertexId *temp_comp_out;
+        VertexT *temp_vertex_out;
+        VertexT *temp_comp_out;
         // </TODO>
 
         /*
@@ -177,7 +177,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             auto col_idx_ptr = sub_graph.column_indices.GetPointer(util::DEVICE);
             GUARD_CU(tos.SetPointer(col_idx_ptr, sub_graph.edges, util::DEVICE));
 
-            for (VertexId node=0; node < sub_graph.nodes; node++)
+            for (VertexT node=0; node < sub_graph.nodes; node++)
             {
                 SizeT start_edge = sub_graph.row_offsets[node  ]; // SDP row start
                 SizeT end_edge   = sub_graph.row_offsets[node+1]; // SDP see up to this number of items in row
@@ -240,7 +240,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             // Reset data
             // Allocate output component_ids if necessary
             //util::MemsetIdxKernel<<<128, 128>>>(component_ids .GetPointer(util::DEVICE), nodes);
-            GUARD_CU(component_ids.ForAll([]__host__ __device__ (VertexId *component_ids_, const SizeT &id){
+            GUARD_CU(component_ids.ForAll([]__host__ __device__ (VertexT *component_ids_, const SizeT &id){
                     // SDP initialize every node to its own component id
                     component_ids_[id] = id;
                 }, nodes, util::DEVICE, this -> stream));
@@ -319,7 +319,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
      * \return     cudaError_t Error message(s), if any
      */
     cudaError_t Extract(
-        VertexId *h_component_ids,
+        VertexT *h_component_ids,
         // </TODO>
         util::Location target = util::DEVICE)
     {
@@ -339,7 +339,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             // </TODO>
         } else if (target == util::HOST) { // SDP: data is on CPU
             GUARD_CU(data_slice.component_ids.ForEach(h_component_ids,
-                []__host__ __device__ (const VertexId &device_component_id, VertexId &host_component_id){
+                []__host__ __device__ (const VertexT &device_component_id, VertexT &host_component_id){
                     host_component_id = device_component_id;
                 }, nodes, util::HOST));
             // </TODO>
