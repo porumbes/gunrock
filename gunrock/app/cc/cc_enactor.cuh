@@ -91,7 +91,6 @@ struct CCIterationLoop : public IterationLoopBase
         
         auto &enactor_stats    = enactor_slice.enactor_stats;
         auto &graph            = data_slice.sub_graph[0];
-        auto &frontier         = enactor_slice.frontier;
         auto &oprtr_parameters = enactor_slice.oprtr_parameters;
         auto &retval           = enactor_stats.retval;
         auto &iteration        = enactor_stats.iteration;
@@ -179,7 +178,7 @@ struct CCIterationLoop : public IterationLoopBase
         if (iteration > 1 && 
             (graph.edges / 3 > graph.nodes))
         {
-            return;
+            return cudaSuccess;
         }
 
         // 
