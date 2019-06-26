@@ -238,7 +238,7 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             //util::MemsetKernel   <<<128, 128>>>(marks         .GetPointer(util::DEVICE), false, edges);
             GUARD_CU(marks.ForEach([]__host__ __device__ (bool &mark){
                 mark = false;
-            }, sub_graph->edges, util::DEVICE, this -> stream));
+            }, edges, util::DEVICE, this -> stream));
 
             // Allocate masks if necessary
             //util::MemsetKernel    <<<128, 128>>>(masks        .GetPointer(util::DEVICE), (signed char)0, nodes);
@@ -261,6 +261,9 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
 
     // Set of data slices (one for each GPU)
     util::Array1D<SizeT, DataSlice> *data_slices;
+
+    // Members
+    SizeT        num_components;
 
     // ----------------------------------------------------------------
     // Problem Methods
@@ -337,8 +340,8 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         // SDP count the number of components
 
         int *marker = new int[nodes];
-        assert(null_ptr != marker);
-        memset(marker, 0, sizeof(int) * this->nodes);
+        assert(nullptr != marker);
+        memset(marker, 0, sizeof(int) * nodes);
 
         num_components=0;
         for (int node=0; node < nodes; node++) {
