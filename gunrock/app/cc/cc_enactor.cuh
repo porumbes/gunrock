@@ -101,6 +101,7 @@ struct CCIterationLoop : public IterationLoopBase
         auto &vertex_flag   = data_slice.vertex_flag;
         auto &edge_flag     = data_slice.edge_flag;
         auto &marks         = data_slice.marks;
+        auto &masks         = data_slice.masks;
         auto &froms         = data_slice.froms;
         auto &tos           = data_slice.tos; 
         // </TODO>
@@ -111,16 +112,16 @@ struct CCIterationLoop : public IterationLoopBase
         auto hook_init_op = [
             tos,
             component_ids
-        ] __host__ __device__ (VertexId *froms_, const SizeT &id)
+        ] __host__ __device__ (VertexT *froms_, const SizeT &id)
         {
-            VertexId from_node = froms_[id];
-            VertexId to_node   = tos[id];
+            VertexT from_node = froms_[id];
+            VertexT to_node   = tos[id];
 
-            VertexId max_node = from_node > to_node ? from_node : to_node;
-            VertexId min_node = from_node + to_node - max_node;
+            VertexT max_node = from_node > to_node ? from_node : to_node;
+            VertexT min_node = from_node + to_node - max_node;
 
             component_ids[max_node] = min_node;
-        }
+        };
 
         // for every edge
         GUARD_CU(froms.ForAll(hook_init_op,
@@ -139,17 +140,17 @@ struct CCIterationLoop : public IterationLoopBase
 
             auto ptr_jump_op = [ 
                 vertex_flag 
-            ] __host__ __device__ (VertexId *component_ids_, const SizeT &id) 
+            ] __host__ __device__ (VertexT *component_ids_, const SizeT &id) 
             {
-                VertexId parent         = Load<cub::LOAD_CG>(component_ids_ + id);
-                VertexId grand_parent   = Load<cub::LOAD_CG>(component_ids_ + parent);
+                VertexT parent         = Load<cub::LOAD_CG>(component_ids_ + id);
+                VertexT grand_parent   = Load<cub::LOAD_CG>(component_ids_ + parent);
 
                 if (parent != grand_parent) 
                 {
-                    Store(0, vertex_flag + 0);
-                    Store(grand_parent, component_ids + id);
+                    Store(vertex_flag + 0, 0);
+                    Store(component_ids_ + id, grand_parent);
                 }
-            }
+            };
 
             GUARD_CU(component_ids.ForAll(ptr_jump_op,
                                           graph.nodes,
@@ -170,7 +171,7 @@ struct CCIterationLoop : public IterationLoopBase
             // Could be because of the Move directly above, but then why didn't we
             // sync with the Move from HOST to DEVICE at the top of the while loop?
             // Old API does this.
-            GUARD_CU2(cudaStreamSynchronize(stream), "cudaStreamSynchronize failed");
+            GUARD_CU2(cudaStreamSynchronize(oprtr_parameters.stream), "cudaStreamSynchronize failed");
         }
         
         // SDP, not really sure what this is about.
@@ -186,7 +187,7 @@ struct CCIterationLoop : public IterationLoopBase
         //
         GUARD_CU(marks.ForEach([]__host__ __device__ (bool &mark){
             mark = false;
-        }, sub_graph->edges, util::DEVICE, this -> stream));
+        }, graph.edges, util::DEVICE, oprtr_parameters.stream));
 
         // SDP, figure out the following:
         // frontier_attribute->queue_index   = 0;        // Work queue index
@@ -206,8 +207,8 @@ struct CCIterationLoop : public IterationLoopBase
             component_ids
         ] __host__ __device__ (signed char *masks_, const SizeT &id)
         {
-            VertexId parent = Load<cub::LOAD_CG>(component_ids + id);
-            masks_[src] = (parent == id) ? 0 : 1;
+            VertexT parent = Load<cub::LOAD_CG>(component_ids + id);
+            masks_[id] = (parent == id) ? 0 : 1;
         };
 
         GUARD_CU(masks.ForAll(update_mask_op,
@@ -253,21 +254,21 @@ struct CCIterationLoop : public IterationLoopBase
                 bool mark = Load<cub::LOAD_CG>(marks_ + id);
                 if (!mark)
                 {
-                    VertexId from_node      = Load<cub::LOAD_CG>(froms + id);
-                    VertexId to_node        = Load<cub::LOAD_CG>(tos + id);
-                    VertexId parent_from    = Load<cub::LOAD_CG>(component_ids + from_node);
-                    VertexId parent_to      = Load<cub::LOAD_CG>(component_ids + to_node);  
+                    VertexT from_node      = Load<cub::LOAD_CG>(froms + id);
+                    VertexT to_node        = Load<cub::LOAD_CG>(tos + id);
+                    VertexT parent_from    = Load<cub::LOAD_CG>(component_ids + from_node);
+                    VertexT parent_to      = Load<cub::LOAD_CG>(component_ids + to_node);  
 
                     if (parent_from == parent_to)
                     {
-                        Store(true, marks_ + id);
+                        Store(marks_ + id, true);
                     } 
                     else 
                     { 
-                        VertexId max_node = parent_from > parent_to ? parent_from : parent_to;
-                        VertexId min_node = parent_from + parent_to - max_node;
-                        Store(min_node, component_ids + max_node);
-                        Store(0, edge_flag + 0);
+                        VertexT max_node = parent_from > parent_to ? parent_from : parent_to;
+                        VertexT min_node = parent_from + parent_to - max_node;
+                        Store(component_ids + max_node, min_node);
+                        Store(edge_flag + 0, 0);
                     }                  
                 }
 
@@ -286,7 +287,7 @@ struct CCIterationLoop : public IterationLoopBase
             // Could be because of the Move directly above, but then why didn't we
             // sync with the Move from HOST to DEVICE at the top of the while loop?
             // Old API does this.
-            GUARD_CU2(cudaStreamSynchronize(stream), "cudaStreamSynchronize failed");
+            GUARD_CU2(cudaStreamSynchronize(oprtr_parameters.stream), "cudaStreamSynchronize failed");
 
 
             // SDP, figure out how to incorporate the following:
@@ -314,7 +315,7 @@ struct CCIterationLoop : public IterationLoopBase
             // Pointer Jump Mask
             //
             vertex_flag[0] = 0;
-            while (!vertex_flag)
+            while (!vertex_flag[0])
             {
                 vertex_flag[0] = 1;
                 GUARD_CU(vertex_flag.Move(util::HOST, util::DEVICE)); 
@@ -322,21 +323,21 @@ struct CCIterationLoop : public IterationLoopBase
                 auto ptr_jump_mask_op = [
                     masks,
                     vertex_flag
-                ] __host__ __device__ (VertexId *component_ids_, const SizeT &id)
+                ] __host__ __device__ (VertexT *component_ids_, const SizeT &id)
                 {
                     if (masks[id] == 0)
                     {
-                        VertexId parent         = Load<cub::LOAD_CG>(component_ids + id);
-                        VertexId grand_parent   = Load<cub::LOAD_CG>(component_ids + parent);
+                        VertexT parent         = Load<cub::LOAD_CG>(component_ids_ + id);
+                        VertexT grand_parent   = Load<cub::LOAD_CG>(component_ids_ + parent);
 
                         if (parent != grand_parent) 
                         {
                             vertex_flag[0] = 0; // SDP why was Store not used in Functor version for this? Was used in PtrJumpIterationLoop.
-                            Store(grand_parent, component_ids + id);
+                            Store(component_ids_ + id, grand_parent);
                         } 
                         else 
                         {
-                            masks[src] = -1; // SDP, should this be a Store too?
+                            masks[id] = -1; // SDP, should this be a Store too?
                         }
                     }
                 };
@@ -354,7 +355,7 @@ struct CCIterationLoop : public IterationLoopBase
                 // Could be because of the Move directly above, but then why didn't we
                 // sync with the Move from HOST to DEVICE at the top of the while loop?
                 // Old API does this.
-                GUARD_CU2(cudaStreamSynchronize(stream), "cudaStreamSynchronize failed");
+                GUARD_CU2(cudaStreamSynchronize(oprtr_parameters.stream), "cudaStreamSynchronize failed");
 
                 // SDP, figure out how to incorporate
                 // enactor_stats -> nodes_queued[0] += frontier_attribute->queue_length;
@@ -374,16 +375,16 @@ struct CCIterationLoop : public IterationLoopBase
 
             auto ptr_jump_unmask = [
                 masks
-            ]  __host__ __device__ (VertexId *component_ids_, const SizeT &id)
+            ]  __host__ __device__ (VertexT *component_ids_, const SizeT &id)
             {
                 if (masks[id] == 1) 
                 {
-                    VertexId parent         = Load<cub::LOAD_CG>(component_ids_ + id);
-                    VertexId grand_parent   = Load<cub::LOAD_CG>(component_ids_ + parent);
+                    VertexT parent         = Load<cub::LOAD_CG>(component_ids_ + id);
+                    VertexT grand_parent   = Load<cub::LOAD_CG>(component_ids_ + parent);
 
-                    Store(grand_parent, component_ids + id);
+                    Store(component_ids_ + id, grand_parent);
                 }
-            }
+            };
 
             GUARD_CU(component_ids.ForAll(ptr_jump_unmask,
                                           graph.nodes,
@@ -532,11 +533,11 @@ struct HookInitIterationLoop : public IterationLoopBase
             const VertexT &input_item, const SizeT &input_pos,
             SizeT &output_pos) -> bool
         {
-            VertexId from_node = froms[src];
-            VertexId to_node   = tos[src];
+            VertexT from_node = froms[src];
+            VertexT to_node   = tos[src];
 
-            VertexId max_node = from_node > to_node ? from_node : to_node;
-            VertexId min_node = from_node + to_node - max_node;
+            VertexT max_node = from_node > to_node ? from_node : to_node;
+            VertexT min_node = from_node + to_node - max_node;
 
             component_ids[max_node] = min_node;
 
