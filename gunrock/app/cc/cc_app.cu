@@ -147,8 +147,8 @@ cudaError_t RunTests(
                 h_degrees, ref_degrees,
                 // </TODO>
                 false);
+            */
         }
-        */
     }
 
     cpu_timer.Start();
