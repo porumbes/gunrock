@@ -152,13 +152,13 @@ cudaError_t RunTests(
     }
 
     cpu_timer.Start();
-    
+    /* SDP -- termporarily comment out for compile
     GUARD_CU(problem.Extract(
         // <TODO> problem specific data
         h_degrees
         // </TODO>
     ));
-    /* SDP -- termporarily comment out for compile
+
     if (validation == "last") {
         SizeT num_errors = Validate_Results(
             parameters,
