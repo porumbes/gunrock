@@ -61,7 +61,7 @@ cudaError_t RunTests(
     util::Parameters &parameters,
     GraphT           &graph,
     // <TODO> add problem specific reference results, e.g.:
-    typename GraphT::ValueT *ref_degrees,
+    typename GraphT::VertexT *ref_component_labels,
     // </TODO>
     util::Location target)
 {
@@ -134,7 +134,7 @@ cudaError_t RunTests(
                 .enactor_stats.iteration), !quiet_mode);
         
         if (validation == "each") {
-            
+            /* SDP -- termporarily comment out for compile
             GUARD_CU(problem.Extract(
                 // <TODO> problem specific data
                 h_degrees
@@ -148,6 +148,7 @@ cudaError_t RunTests(
                 // </TODO>
                 false);
         }
+        */
     }
 
     cpu_timer.Start();
@@ -157,6 +158,7 @@ cudaError_t RunTests(
         h_degrees
         // </TODO>
     ));
+    /* SDP -- termporarily comment out for compile
     if (validation == "last") {
         SizeT num_errors = Validate_Results(
             parameters,
@@ -165,7 +167,7 @@ cudaError_t RunTests(
             h_degrees, ref_degrees,
             // </TODO>
             false);
-    }
+    }*/
 
     // compute running statistics
     // <TODO> change NULL to problem specific per-vertex visited marker, e.g. h_distances
@@ -180,7 +182,7 @@ cudaError_t RunTests(
     GUARD_CU(enactor.Release(target));
     GUARD_CU(problem.Release(target));
     // <TODO> Release problem specific data, e.g.:
-    delete[] h_degrees; h_degrees   = NULL;
+    // SDP -- termporarily comment out for compile delete[] h_degrees; h_degrees   = NULL;
     // </TODO>
     cpu_timer.Stop(); total_timer.Stop();
 

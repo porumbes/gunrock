@@ -14,6 +14,11 @@
 
 #pragma once
 
+// Boost includes for CPU CC reference algorithms
+#include <boost/config.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/connected_components.hpp>
+
 namespace gunrock {
 namespace app {
 namespace cc {
@@ -34,25 +39,41 @@ namespace cc {
 template <typename GraphT>
 double CPU_Reference(
     const GraphT &graph,
-    // <TODO> add problem specific inputs and outputs 
-    typename GraphT::ValueT *degrees,
-    // </TODO>
+    typename GraphT::VertexT *component_labels,
     bool quiet)
 {
     typedef typename GraphT::SizeT SizeT;
-    
+    typedef typename GraphT::VertexT VertexT;
+
+    auto &row_offsets = graph.CsrT::row_offsets;
+    auto &column_indices = graph.CsrT::column_indices;
+    SizeT num_nodes = graph.nodes;
+
+    //
+    // Copy our graph's data into something suitable for Boost
+    //
+    using namespace boost;
+    adjacency_list<vecS, vecS, undirectedS> boost_graph;
+
+    for (int i = 0; i < num_nodes; ++i) {
+        for (int j = row_offsets[i]; j < row_offsets[i + 1]; ++j) {
+            add_edge(i, column_indices[j], boost_graph);
+        }
+    }
+
+    //
+    // Run and time Boost Graph's connected components
+    //
     util::CpuTimer cpu_timer;
     cpu_timer.Start();
-    
-    // <TODO> 
-    // implement CPU reference implementation
-    for(SizeT v = 0; v < graph.nodes; ++v) {
-        degrees[v] = graph.row_offsets[v + 1] - graph.row_offsets[v];
-    }
-    // </TODO>
-    
+    SizeT num_components = connected_components(boost_graph, &component_labels[0]); 
     cpu_timer.Stop();
     float elapsed = cpu_timer.ElapsedMillis();
+
+    if (!quiet) {
+        printf("CPU CC finished in %lf msec.\n", elapsed);
+    }
+
     return elapsed;
 }
 

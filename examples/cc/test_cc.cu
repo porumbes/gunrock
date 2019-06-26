@@ -69,20 +69,20 @@ struct main_struct
         // </TODO>
         
         // <TODO> declare datastructures for reference result on GPU
-        ValueT *ref_degrees;
+        VertexT * ref_component_labels = nullptr; 
         // </TODO>
         
         if (!quick) {
             // <TODO> init datastructures for reference result on GPU
-            ref_degrees = new ValueT[graph.nodes];
+            ref_component_labels = new VertexT[graph.nodes];
             // </TODO>
 
             // If not in `quick` mode, compute CPU reference implementation
             util::PrintMsg("__________________________", !quiet);
             
             float elapsed = APP_NAMESPACE::CPU_Reference(
-                graph.csr(),
-                ref_degrees,
+                graph,
+                ref_component_labels,
                 quiet);
             
             util::PrintMsg("--------------------------\n Elapsed: "
@@ -96,18 +96,18 @@ struct main_struct
         GUARD_CU(app::Switch_Parameters(parameters, graph, switches,
             [
                 // </TODO> pass necessary data to lambda
-                ref_degrees
+                ref_component_labels
                 // </TODO>
             ](util::Parameters &parameters, GraphT &graph)
             {
                 // <TODO> pass necessary data to app::Template::RunTests
-                return APP_NAMESPACE::RunTests(parameters, graph, ref_degrees, util::DEVICE);
+                return APP_NAMESPACE::RunTests(parameters, graph, ref_component_labels, util::DEVICE);
                 // </TODO>
             }));
 
         if (!quick) {
             // <TODO> deallocate host references
-            delete[] ref_degrees; ref_degrees = NULL;
+            delete[] ref_component_labels; ref_component_labels = nullptr;
             // </TODO>
         }
         return retval;
