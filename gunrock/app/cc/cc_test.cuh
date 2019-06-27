@@ -44,6 +44,7 @@ double CPU_Reference(
 {
     typedef typename GraphT::SizeT SizeT;
     typedef typename GraphT::VertexT VertexT;
+    typedef typename GraphT::CsrT CsrT;
 
     auto &row_offsets = graph.CsrT::row_offsets;
     auto &column_indices = graph.CsrT::column_indices;
