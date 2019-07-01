@@ -67,12 +67,12 @@ double CPU_Reference(
     //
     util::CpuTimer cpu_timer;
     cpu_timer.Start();
-    SizeT num_components = connected_components(boost_graph, &component_labels[0]); 
+    size_t num_components = connected_components(boost_graph, &component_labels[0]); 
     cpu_timer.Stop();
     float elapsed = cpu_timer.ElapsedMillis();
 
     if (!quiet) {
-        printf("CPU CC finished in %lf msec.\n", elapsed);
+        printf("CPU CC finished in %lf msec. Found %zu components\n", elapsed, num_components);
     }
 
     return elapsed;
