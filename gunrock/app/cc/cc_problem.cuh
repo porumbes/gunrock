@@ -160,7 +160,13 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         {
             cudaError_t retval  = cudaSuccess;
 
+            // SDP Move the CSR graph bits to the GPU. The 'tos' needs
+            // to reference the 'column_indices' on DEVICE
             GUARD_CU(BaseDataSlice::Init(sub_graph, num_gpus, gpu_idx, target, flag));
+            if(target & util::DEVICE)
+            {
+                GUARD_CU(sub_graph.CsrT::Move(util::HOST, target, this->stream));
+            }
 
 	        GUARD_CU(component_ids         .Allocate(sub_graph.nodes, util::DEVICE));
 	        GUARD_CU(masks                 .Allocate(sub_graph.nodes, util::DEVICE));
@@ -192,11 +198,6 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
             GUARD_CU(froms.Release(util::HOST));
             // </TODO>
 
-            if (target & util::DEVICE) {
-                // <TODO> move sub-graph used by the problem onto GPU,
-                GUARD_CU(sub_graph.CsrT::Move(util::HOST, target, this -> stream));
-                // </TODO>
-            }
             return retval;
         }
 
