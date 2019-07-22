@@ -326,7 +326,9 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         if (target == util::DEVICE) {
             GUARD_CU(util::SetDevice(this->gpu_idx[0]));
 
-            GUARD_CU(data_slice.component_ids.SetPointer(h_component_ids));
+            GUARD_CU(data_slice.component_ids.SetPointer(h_component_ids,
+                                                         nodes,
+                                                         util::HOST));
             GUARD_CU(data_slice.component_ids.Move(util::DEVICE, util::HOST));
 
             // </TODO>
@@ -354,6 +356,8 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
         }
 
         delete [] marker;
+
+        printf("CC Extract num_components = %d\n", num_components);
 
         return retval;
     }

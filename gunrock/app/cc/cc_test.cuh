@@ -92,9 +92,8 @@ template <typename GraphT>
 typename GraphT::SizeT Validate_Results(
              util::Parameters &parameters,
              GraphT           &graph,
-             // <TODO>
-             typename GraphT::ValueT *h_degrees,
-             typename GraphT::ValueT *ref_degrees,
+             typename GraphT::VertexT *h_component_ids,
+             typename GraphT::VertexT *ref_component_labels,
              // </TODO>
              bool verbose = true)
 {
@@ -105,9 +104,9 @@ typename GraphT::SizeT Validate_Results(
     bool quiet = parameters.Get<bool>("quiet");
 
     // <TODO> result validation and display
-    for(SizeT v = 0; v < graph.nodes; ++v) {
-        printf("%d %f %f\n", v, h_degrees[v], ref_degrees[v]);
-    }
+    // for(SizeT v = 0; v < graph.nodes; ++v) {
+    //     printf("%d %f %f\n", v, h_degrees[v], ref_degrees[v]);
+    // }
     // </TODO>
 
     if(num_errors == 0) {

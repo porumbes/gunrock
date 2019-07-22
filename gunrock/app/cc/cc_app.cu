@@ -88,8 +88,8 @@ cudaError_t RunTests(
     // printf("RunTests: %d srcs: src[0]=%d\n", srcs.size(), srcs[0]);
     // </TODO>
 
-    // <TODO> allocate problem specific host data, e.g.:
-    ValueT *h_degrees = new ValueT[graph.nodes];
+    // allocate problem specific host data, e.g.:
+    auto h_component_ids = new VertexT[graph.nodes];
     // </TODO>
 
     // Allocate problem and enactor on GPU, and initialize them
@@ -134,28 +134,27 @@ cudaError_t RunTests(
                 .enactor_stats.iteration), !quiet_mode);
         
         if (validation == "each") {
-            /* SDP -- termporarily comment out for compile
             GUARD_CU(problem.Extract(
-                // <TODO> problem specific data
-                h_degrees
+                // problem specific data
+                h_component_ids
                 // </TODO>
             ));
             SizeT num_errors = Validate_Results(
                 parameters,
                 graph,
-                // <TODO> problem specific data
-                h_degrees, ref_degrees,
+                // problem specific data
+                h_component_ids, ref_component_labels,
                 // </TODO>
                 false);
-            */
+            
         }
     }
 
     cpu_timer.Start();
-    /* SDP -- termporarily comment out for compile
+
     GUARD_CU(problem.Extract(
-        // <TODO> problem specific data
-        h_degrees
+        // problem specific data
+        h_component_ids
         // </TODO>
     ));
 
@@ -163,11 +162,11 @@ cudaError_t RunTests(
         SizeT num_errors = Validate_Results(
             parameters,
             graph,
-            // <TODO> problem specific data
-            h_degrees, ref_degrees,
+            // problem specific data
+            h_component_ids, ref_component_labels,
             // </TODO>
             false);
-    }*/
+    }
 
     // compute running statistics
     // <TODO> change NULL to problem specific per-vertex visited marker, e.g. h_distances
@@ -181,8 +180,9 @@ cudaError_t RunTests(
     // Clean up
     GUARD_CU(enactor.Release(target));
     GUARD_CU(problem.Release(target));
-    // <TODO> Release problem specific data, e.g.:
-    // SDP -- termporarily comment out for compile delete[] h_degrees; h_degrees   = NULL;
+    // Release problem specific data, e.g.:
+    delete[] h_component_ids; 
+    h_component_ids = nullptr;
     // </TODO>
     cpu_timer.Stop(); total_timer.Stop();
 
