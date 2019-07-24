@@ -247,12 +247,12 @@ struct Problem : ProblemBase<_GraphT, _FLAG>
                x = (signed char)0;
             }, nodes, util::DEVICE, this -> stream));
 
-            // Initialize stop condition variables
+            // Reset stop condition variables
             vertex_flag[0]=0;
             GUARD_CU(vertex_flag.Move(util::HOST, util::DEVICE));
             edge_flag[0]=0;
             GUARD_CU(edge_flag.Move(util::HOST, util::DEVICE));
-            
+
             // </TODO>
 
             return retval;
