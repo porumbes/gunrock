@@ -180,11 +180,12 @@ struct CCIterationLoop : public IterationLoopBase
         
         // SDP, not really sure what this is about.
         // Should this be more of a stop condition? An optimization?
-        if (iteration > 1 && 
-            (graph.edges / 3 > graph.nodes))
-        {
-            return cudaSuccess;
-        }
+        // if (iteration > 1 && 
+        //     (graph.edges / 3 > graph.nodes))
+        // {
+        //     printf("returning iteration = %d\n", iteration);
+        //     return cudaSuccess;
+        // }
 
         // 
         // Prepare for Update Mask
@@ -309,7 +310,7 @@ struct CCIterationLoop : public IterationLoopBase
 
             // Check if done
             if (edge_flag[0]) break; //|| enactor_stats->iteration>5) break;
-
+            }
             //
             // Prepare for Pointer Jump Mask
             //
@@ -467,14 +468,18 @@ struct CCIterationLoop : public IterationLoopBase
         return retval;
     }
 
-        bool Stop_Condition(int gpu_num = 0)
+    bool Stop_Condition(int gpu_num = 0)
     {
-        printf("Stop_Condition\n");
-        return true;
-        // SDP not sure what to do for this.
-        // Probably not needed. HookInit happens in FullQueue_Gather
-        // in old API. Only runs if:
-        // data_slice->turn == 0
+        auto &data_slice = this -> enactor ->
+            problem -> data_slices[this -> gpu_num][0];
+            
+        auto &vertex_flag   = data_slice.vertex_flag;
+        auto &edge_flag     = data_slice.edge_flag;
+
+        printf("Stop_Condition: vf = %d, ef = %d\n", vertex_flag[0], edge_flag[0]);
+
+        return vertex_flag[0] == 1 && 
+               edge_flag[0] == 1;
     }
 }; // end of CCIterationLoop
 
