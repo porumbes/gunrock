@@ -122,11 +122,14 @@ struct CCIterationLoop : public IterationLoopBase
             component_ids[max_node] = min_node;
         };
 
+        printf("froms.GetSize = %d, tos.GetSize = %d\n", froms.GetSize(), tos.GetSize());
         // for every edge
         GUARD_CU(froms.ForAll(hook_init_op,
                              graph.edges,
                              util::DEVICE,
                              oprtr_parameters.stream));
+        GUARD_CU2(cudaStreamSynchronize(oprtr_parameters.stream), "cudaStreamSynchronize failed");
+        printf("After froms.ForAll\n");
 
         //
         // Pointer Jumping
@@ -134,6 +137,7 @@ struct CCIterationLoop : public IterationLoopBase
         vertex_flag[0] = 0;
         while(!vertex_flag[0]) 
         {
+            printf("in while(!vertex_flag[0])\n");
             vertex_flag[0] = 1;
             GUARD_CU(vertex_flag.Move(util::HOST, util::DEVICE));
 
@@ -151,6 +155,7 @@ struct CCIterationLoop : public IterationLoopBase
                 }
             };
 
+            printf("component_ids.GetSize = %d\n", component_ids.GetSize());
             GUARD_CU(component_ids.ForAll(ptr_jump_op,
                                           graph.nodes,
                                           util::DEVICE,
@@ -184,6 +189,7 @@ struct CCIterationLoop : public IterationLoopBase
         // 
         // Prepare for Update Mask
         //
+        printf("preparing for Update Mask\n");
         GUARD_CU(marks.ForEach([]__host__ __device__ (bool &mark){
             mark = false;
         }, graph.edges, util::DEVICE, oprtr_parameters.stream));
@@ -210,10 +216,12 @@ struct CCIterationLoop : public IterationLoopBase
             masks_[id] = (parent == id) ? 0 : 1;
         };
 
+        printf("update_mask_op\n");
         GUARD_CU(masks.ForAll(update_mask_op,
                               graph.nodes,
                               util::DEVICE,
                               oprtr_parameters.stream) );
+        printf("After update_mask_op\n");
 
         // SDP, figure out how to incorporate the following:
         // if (enactor -> debug && (enactor_stats->retval = 
@@ -228,6 +236,7 @@ struct CCIterationLoop : public IterationLoopBase
         edge_flag[0] = 0;
         while (!edge_flag[0])
         {
+            printf("in while (!edge_flag[0]) \n");
             //
             // Prepare for Hook Max
             //
@@ -316,6 +325,7 @@ struct CCIterationLoop : public IterationLoopBase
             vertex_flag[0] = 0;
             while (!vertex_flag[0])
             {
+                printf("In Pointer Jump Mask -- while (!vertex_flag[0])\n");
                 vertex_flag[0] = 1;
                 GUARD_CU(vertex_flag.Move(util::HOST, util::DEVICE)); 
 
