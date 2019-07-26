@@ -310,7 +310,7 @@ struct CCIterationLoop : public IterationLoopBase
 
             // Check if done
             if (edge_flag[0]) break; //|| enactor_stats->iteration>5) break;
-            }
+            
             //
             // Prepare for Pointer Jump Mask
             //
