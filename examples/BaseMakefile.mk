@@ -11,7 +11,10 @@
 
 force64 = 1
 use_metis = 0
+
+# -g -G failed? uncomment the maxregisters:
 # maxregisters = 32
+
 use_boost = 0
 NVCC = "$(shell which nvcc)"
 NVCC_VERSION = $(strip $(shell nvcc --version | grep release | sed 's/.*release //' |  sed 's/,.*//'))
@@ -51,14 +54,14 @@ SM_TARGETS = $(GEN_SM70)
 #-------------------------------------------------------------------------------
 
 CUDA_INC = -I"$(shell dirname $(NVCC))/../include"
-MGPU_INC = -I"../../externals/moderngpu/include"
+MGPU_INC = -I"../../externals/moderngpu/src"
 CUB_INC = -I"../../externals/cub"
 
 BOOST_INC =
 BOOST_LINK =
 ifeq ($(use_boost), 1)
     BOOST_INC = -I"/usr/local/include"
-    BOOST_LINK = -Xcompiler -DBOOST_FOUND -L"/usr/local/lib" -Xlinker -lboost_system -Xlinker -lboost_chrono -Xlinker -lboost_timer -Xlinker -lboost_filesystem
+    BOOST_LINK = -Xcompiler -DBOOST_FOUND -L"/usr/local/lib" -Xlinker -lboost_system -Xlinker -lboost_chrono -Xlinker -lboost_timer -Xlinker -lboost_filesystem -I"../../externals/rapidjson/include"
 else
     BOOST_INC = -I"../../externals/rapidjson/include"
 endif
@@ -81,7 +84,7 @@ else
 	METIS_LINK = -Xlinker -lmetis -Xcompiler -DMETIS_FOUND
 endif
 
-GUNROCK_DEF = -Xcompiler -DGUNROCKVERSION=1.0.0
+GUNROCK_DEF = -Xcompiler -DGUNROCKVERSION=1.1.0
 LINK = $(BOOST_LINK) $(OMP_LINK) $(METIS_LINK) $(GUNROCK_DEF)
 INC = $(CUDA_INC) $(OMP_INC) $(MGPU_INC) $(CUB_INC) $(BOOST_INC) -I.. -I../.. $(LINK)
 
@@ -129,9 +132,8 @@ endif
 EXTRA_SOURCE_ = ../../gunrock/util/str_to_T.cu \
 	../../gunrock/util/test_utils.cu \
 	../../gunrock/util/error_utils.cu \
-	../../externals/moderngpu/src/mgpucontext.cu \
-	../../externals/moderngpu/src/mgpuutil.cpp \
 	../../gunrock/util/gitsha1make.c
+	# ../../externals/moderngpu/src/moderngpu/context.hxx \
 
 ifeq (DARWIN, $(findstring DARWIN, $(OSUPPER)))
     EXTRA_SOURCE = $(EXTRA_SOURCE_) \

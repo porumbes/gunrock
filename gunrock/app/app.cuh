@@ -17,12 +17,12 @@
 
 // Utilities and correctness-checking
 #include <gunrock/util/test_utils.cuh>
+#include <gunrock/util/shared_utils.cuh>
 
 // Graph definations
 #include <gunrock/graphio/graphio.cuh>
 #include <gunrock/app/app_base.cuh>
 #include <gunrock/app/test_base.cuh>
-
 
 // Leave this at the end of the file
 // Local Variables:

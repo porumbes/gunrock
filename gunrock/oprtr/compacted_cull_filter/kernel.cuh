@@ -24,7 +24,13 @@ namespace compacted_cull_filter {
 extern __device__ __host__ void Error_UnsupportedCUDAArchitecture();
 
 template <typename KernelPolicy, typename Problem, typename Functor,
-          bool VALID = (__GR_CUDA_ARCH__ >= KernelPolicy::CUDA_ARCH)>
+          bool VALID = 
+#ifdef __CUDA_ARCH__
+              true
+#else
+              false
+#endif
+          >
 struct Dispatch {
   typedef typename KernelPolicy::VertexId VertexId;
   typedef typename KernelPolicy::SizeT SizeT;
@@ -88,7 +94,7 @@ struct Dispatch<KernelPolicy, Problem, Functor, true> {
         work_progress.template GetQueueCounter<typename Problem::VertexId>(
             queue_index + 1),
         0,  //(typename Problem::SizeT)blockIdx.x * KernelPolicy::THREADS *
-            //KernelPolicy::GLOBAL_LOAD_SIZE,
+            // KernelPolicy::GLOBAL_LOAD_SIZE,
         d_visited_mask, d_data_slice, label);
 
     cta.Init(thread_work);

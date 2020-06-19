@@ -24,6 +24,8 @@
 #include <gunrock/util/parameters.h>
 #include <gunrock/util/test_utils.h>
 
+#include <gunrock/oprtr/oprtr.cuh>
+
 namespace gunrock {
 namespace graphio {
 namespace rmat {
@@ -31,17 +33,12 @@ namespace rmat {
 typedef std::mt19937 Engine;
 typedef std::uniform_real_distribution<double> Distribution;
 
-struct randState
-{
-    Engine &engine;
-    Distribution &distribution;
+struct randState {
+  Engine &engine;
+  Distribution &distribution;
 
-    randState(
-        Engine &_engine,
-        Distribution &_distribution) :
-        engine(_engine),
-        distribution(_distribution)
-    {}
+  randState(Engine &_engine, Distribution &_distribution)
+      : engine(_engine), distribution(_distribution) {}
 };
 
 /**
@@ -50,24 +47,20 @@ struct randState
  * @param[in] rand_data
  */
 template <typename StateT>
-__device__ __host__ __forceinline__
-double Sprng (StateT &rand_state)
-{
+__device__ __host__ __forceinline__ double Sprng(StateT &rand_state) {
 #ifdef __CUDA_ARCH__
-    return curand_uniform(&rand_state);
+  return curand_uniform(&rand_state);
 #else
-    return 0; // Invalid
+  return 0;  // Invalid
 #endif
 }
 
 template <>
-__device__ __host__ __forceinline__
-double Sprng (randState &rand_state)
-{
+__device__ __host__ __forceinline__ double Sprng(randState &rand_state) {
 #ifdef __CUDA_ARCH__
-    return 0; // Invalid
+  return 0;  // Invalid
 #else
-    return rand_state.distribution(rand_state.engine);
+  return rand_state.distribution(rand_state.engine);
 #endif
 }
 
@@ -77,10 +70,8 @@ double Sprng (randState &rand_state)
  * @param[in] rand_data
  */
 template <typename StateT>
-__device__ __host__ __forceinline__
-bool Flip (StateT &rand_state)
-{
-    return Sprng(rand_state) >= 0.5;
+__device__ __host__ __forceinline__ bool Flip(StateT &rand_state) {
+  return Sprng(rand_state) >= 0.5;
 }
 
 /**
@@ -96,31 +87,23 @@ bool Flip (StateT &rand_state)
  * @param[in] rand_data
  */
 template <typename VertexT, typename StateT>
-__device__ __host__ __forceinline__
-void ChoosePartition (
-    VertexT &u, VertexT &v, VertexT step,
-    double a, double b, double c, double d,
-    StateT &rand_state)
-{
-    double p = Sprng(rand_state);
+__device__ __host__ __forceinline__ void ChoosePartition(VertexT &u, VertexT &v,
+                                                         VertexT step, double a,
+                                                         double b, double c,
+                                                         double d,
+                                                         StateT &rand_state) {
+  double p = Sprng(rand_state);
 
-    if (p < a)
-    {
-        // do nothing
-    }
-    else if ((a < p) && (p < a + b))
-    {
-        v += step;
-    }
-    else if ((a + b < p) && (p < a + b + c))
-    {
-        u += step;
-    }
-    else if ((a + b + c < p) && (p < a + b + c + d))
-    {
-        u += step;
-        v += step;
-    }
+  if (p < a) {
+    // do nothing
+  } else if ((a < p) && (p < a + b)) {
+    v += step;
+  } else if ((a + b < p) && (p < a + b + c)) {
+    u += step;
+  } else if ((a + b + c < p) && (p < a + b + c + d)) {
+    u += step;
+    v += step;
+  }
 }
 
 /**
@@ -133,85 +116,79 @@ void ChoosePartition (
  * @param[in] rand_data
  */
 template <typename StateT>
-__device__ __host__ __forceinline__
-void VaryParams(
-    double &a, double &b, double &c, double &d,
-    StateT &rand_state)
-{
-    double v, S;
+__device__ __host__ __forceinline__ void VaryParams(double &a, double &b,
+                                                    double &c, double &d,
+                                                    StateT &rand_state) {
+  double v, S;
 
-    // Allow a max. of 5% variation
-    v = 0.05;
+  // Allow a max. of 5% variation
+  v = 0.05;
 
-    if (Flip(rand_state))
-    {
-        a += a * v * Sprng(rand_state);
-    } else {
-        a -= a * v * Sprng(rand_state);
-    }
+  if (Flip(rand_state)) {
+    a += a * v * Sprng(rand_state);
+  } else {
+    a -= a * v * Sprng(rand_state);
+  }
 
-    if (Flip(rand_state))
-    {
-        b += b * v * Sprng(rand_state);
-    } else {
-        b -= b * v * Sprng(rand_state);
-    }
+  if (Flip(rand_state)) {
+    b += b * v * Sprng(rand_state);
+  } else {
+    b -= b * v * Sprng(rand_state);
+  }
 
-    if (Flip(rand_state))
-    {
-        c += c * v * Sprng(rand_state);
-    } else {
-        c -= c * v * Sprng(rand_state);
-    }
+  if (Flip(rand_state)) {
+    c += c * v * Sprng(rand_state);
+  } else {
+    c -= c * v * Sprng(rand_state);
+  }
 
-    if (Flip(rand_state))
-    {
-        d += d * v * Sprng(rand_state);
-    } else {
-        d -= d * v * Sprng(rand_state);
-    }
+  if (Flip(rand_state)) {
+    d += d * v * Sprng(rand_state);
+  } else {
+    d -= d * v * Sprng(rand_state);
+  }
 
-    S = a + b + c + d;
+  S = a + b + c + d;
 
-    a = a / S;
-    b = b / S;
-    c = c / S;
-    d = d / S;
+  a = a / S;
+  b = b / S;
+  c = c / S;
+  d = d / S;
 }
 
-cudaError_t UseParameters(
-    util::Parameters &parameters,
-    std::string graph_prefix = "")
-{
-    cudaError_t retval = cudaSuccess;
+template <typename ParametersT>
+cudaError_t UseParameters(ParametersT &parameters,
+                          std::string graph_prefix = "") {
+  cudaError_t retval = cudaSuccess;
 
-    GUARD_CU(parameters.Use<double>(
-        graph_prefix + "rmat-a",
-        util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
-        0.57,
-        "a for rmat generator",
-        __FILE__, __LINE__));
+  GUARD_CU(parameters.template Use<double>(
+      graph_prefix + "rmat-a",
+      util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
+      0.57, "a for rmat generator", __FILE__, __LINE__));
 
-    GUARD_CU(parameters.Use<double>(
-        graph_prefix + "rmat-b",
-        util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
-        0.19,
-        "b for rmat generator",
-        __FILE__, __LINE__));
+  GUARD_CU(parameters.template Use<double>(
+      graph_prefix + "rmat-b",
+      util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
+      0.19, "b for rmat generator", __FILE__, __LINE__));
 
-    GUARD_CU(parameters.Use<double>(
-        graph_prefix + "rmat-c",
-        util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
-        0.19,
-        "c for rmat generator",
-        __FILE__, __LINE__));
+  GUARD_CU(parameters.template Use<double>(
+      graph_prefix + "rmat-c",
+      util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
+      0.19, "c for rmat generator", __FILE__, __LINE__));
 
-    GUARD_CU(parameters.Use<double>(
-        graph_prefix + "rmat-d",
+  GUARD_CU(parameters.template Use<double>(
+      graph_prefix + "rmat-d",
+      util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
+      0.05, "d for rmat generator, default is 1 - a - b - c", __FILE__,
+      __LINE__));
+
+    GUARD_CU(parameters.template Use<bool>(
+        graph_prefix + "grmat",
         util::REQUIRED_ARGUMENT | util::SINGLE_VALUE | util::OPTIONAL_PARAMETER,
-        0.05,
-        "d for rmat generator, default is 1 - a - b - c",
+        false,
+        "Generate rmat using GPU",
         __FILE__, __LINE__));
+    
 
     return retval;
 }
@@ -249,8 +226,9 @@ cudaError_t Build(
     typedef typename GraphT::CooT    CooT;
 
     bool quiet = parameters.Get<bool>("quiet");
+    bool grmat = parameters.Get<bool>("grmat");
+
     std::string dataset = "rmat_";
-    //bool undirected = !parameters.Get<bool>(graph_prefix + "directed");
     SizeT scale = parameters.Get<SizeT>(graph_prefix + "graph-scale");
     SizeT num_nodes = 0;
     if (!parameters.UseDefault(graph_prefix + "graph-nodes"))
@@ -305,62 +283,136 @@ cudaError_t Build(
         ", " + std::to_string(b0) +
         ", " + std::to_string(c0) +
         ", " + std::to_string(d0) + ")", !quiet);
+
     util::CpuTimer cpu_timer;
-    cpu_timer.Start();
-    util::Location  target        = util::HOST;
-
+    
     // construct COO format graph
-    GUARD_CU(graph.CooT::Allocate(num_nodes, num_edges, target));
+    GUARD_CU(graph.CooT::Allocate(num_nodes, num_edges, util::HOST | util::DEVICE));
 
-    #pragma omp parallel
-    {
-        int thread_num  = omp_get_thread_num();
-        int num_threads = omp_get_num_threads();
-        SizeT edge_start   = (long long )(num_edges) * thread_num / num_threads;
-        SizeT edge_end     = (long long )(num_edges) * (thread_num + 1) / num_threads;
-        unsigned int seed_ = seed + 616 * thread_num;
-        Engine engine(seed_);
-        Distribution distribution(0.0, 1.0);
-        randState rand_state(engine, distribution);
-
-        for (SizeT e = edge_start; e < edge_end; e++)
+    if (!grmat) {
+        cpu_timer.Start();
+        #pragma omp parallel
         {
+            int thread_num  = omp_get_thread_num();
+            int num_threads = omp_get_num_threads();
+            SizeT edge_start   = (long long )(num_edges) * thread_num / num_threads;
+            SizeT edge_end     = (long long )(num_edges) * (thread_num + 1) / num_threads;
+            unsigned int seed_ = seed + 616 * thread_num;
+            Engine engine(seed_);
+            Distribution distribution(0.0, 1.0);
+            randState rand_state(engine, distribution);
+
+            for (SizeT e = edge_start; e < edge_end; e++)
+            {
+                double a = a0;
+                double b = b0;
+                double c = c0;
+                double d = d0;
+
+                VertexT u    = 1;
+                VertexT v    = 1;
+                VertexT step = num_nodes / 2;
+
+                while (step >= 1)
+                {
+                    ChoosePartition (u, v, step, a, b, c, d, rand_state);
+                    step /= 2;
+                    VaryParams (a, b, c, d, rand_state);
+                }
+
+                // create edge
+                graph.CooT::edge_pairs[e].x = u - 1; // zero based
+                graph.CooT::edge_pairs[e].y = v - 1; // zero based
+                if (GraphT::FLAG & graph::HAS_EDGE_VALUES)
+                {
+                    if(random_edge_values)
+                    {
+                        graph.CooT::edge_values[e] = Sprng(rand_state) * edge_value_range + edge_value_min;
+                    }
+                    else
+                    {
+                        graph.CooT::edge_values[e] = 1;
+                    }
+
+                }
+            }
+        }
+        cpu_timer.Stop();
+    } else {
+        util::Location  target        = util::DEVICE;
+        cudaStream_t stream;
+        cudaStreamCreate(&stream);
+
+        util::Array1D<SizeT, curandState> rand_states;
+        GUARD_CU(rand_states.Allocate(num_edges, target));
+        GUARD_CU(rand_states.EnsureSize_(num_edges, target));
+
+        auto &edge_values = graph.CooT::edge_values;
+        auto &edge_pairs = graph.CooT::edge_pairs;
+
+        cpu_timer.Start();
+
+        GUARD_CU(oprtr::For( 
+            [seed, rand_states] 
+            __device__ (const SizeT &s) {
+            curand_init(seed, s, 0, rand_states + s);
+        }, num_edges, target, stream));
+
+        GUARD_CU(oprtr::For(
+                [graph, num_nodes, num_edges,
+                edge_value_range, edge_value_min,
+                a0, b0, c0, d0, rand_states, random_edge_values,
+                edge_values, edge_pairs] 
+                __device__ (const SizeT &e) {
+
+            curandState &rand_state = rand_states[e];
+        
+            if (e >= num_edges) return;
+            
             double a = a0;
             double b = b0;
             double c = c0;
             double d = d0;
-
+        
             VertexT u    = 1;
             VertexT v    = 1;
             VertexT step = num_nodes / 2;
-
+        
             while (step >= 1)
             {
                 ChoosePartition (u, v, step, a, b, c, d, rand_state);
                 step /= 2;
                 VaryParams (a, b, c, d, rand_state);
             }
-
+        
             // create edge
-            graph.CooT::edge_pairs[e].x = u - 1; // zero based
-            graph.CooT::edge_pairs[e].y = v - 1; // zero based
+            edge_pairs[e].x = u - 1; // zero based
+            edge_pairs[e].y = v - 1; // zero based
+        
             if (GraphT::FLAG & graph::HAS_EDGE_VALUES)
             {
                 if(random_edge_values)
                 {
-                    graph.CooT::edge_values[e] = Sprng(rand_state) * edge_value_range + edge_value_min;
+                    edge_values[e] = 
+                    Sprng(rand_state) * edge_value_range + edge_value_min;
                 }
                 else
                 {
-                    graph.CooT::edge_values[e] = 1;
+                    edge_values[e] = 1;
                 }
-
             }
-        }
-    }
-    if (retval) return retval;
+        }, num_edges, target, stream));
 
-    cpu_timer.Stop();
+        cpu_timer.Stop();
+        
+        // TODO: we need this right now to remove duplicate edges on HOST
+        GUARD_CU(graph.CooT ::Move(util::DEVICE, util::HOST)); 
+        
+        GUARD_CU(rand_states.Release());
+    }
+
+    if (retval) return retval;
+    
     float elapsed = cpu_timer.ElapsedMillis();
     util::PrintMsg("RMAT generated in " +
         std::to_string(elapsed) + " ms.", !quiet);
@@ -368,14 +420,15 @@ cudaError_t Build(
 }
 
 template <typename GraphT, bool COO_SWITCH>
-struct CooSwitch
-{
-static cudaError_t Load(
-    util::Parameters &parameters,
-    GraphT &graph,
-    std::string graph_prefix = "")
-{
+struct CooSwitch {
+  static cudaError_t Load(util::Parameters &parameters, GraphT &graph,
+                          std::string graph_prefix = "") {
     cudaError_t retval = cudaSuccess;
+    bool grmat = parameters.Get<bool>("grmat");
+    util::Location target = util::HOST;
+    // if (grmat)
+    //   target = util::DEVICE;
+
     GUARD_CU(Build(parameters, graph, graph_prefix));
 
     bool remove_self_loops
@@ -387,34 +440,38 @@ static cudaError_t Load(
     if (remove_self_loops && remove_duplicate_edges)
     {
         GUARD_CU(graph.RemoveSelfLoops_DuplicateEdges(
-            gunrock::graph::BY_ROW_ASCENDING, util::HOST, 0, quiet));
+            gunrock::graph::BY_ROW_ASCENDING, target, 0, quiet));
     } else if (remove_self_loops)
     {
         GUARD_CU(graph.RemoveSelfLoops(
-            gunrock::graph::BY_ROW_ASCENDING, util::HOST, 0, quiet));
+            gunrock::graph::BY_ROW_ASCENDING, target, 0, quiet));
     } else if (remove_duplicate_edges)
     {
         GUARD_CU(graph.RemoveDuplicateEdges(
-            gunrock::graph::BY_ROW_ASCENDING, util::HOST, 0, quiet));
+            gunrock::graph::BY_ROW_ASCENDING, target, 0, quiet));
     }
-    GUARD_CU(graph.FromCoo(graph, util::HOST, 0, quiet, true));
+
+    // TODO: undirected graph generation Issue# 592
+
+    GUARD_CU(graph.FromCoo(graph, target, 0, quiet, true));
     return retval;
-}
+  }
 };
 
 template <typename GraphT>
-struct CooSwitch<GraphT, false>
-{
-static cudaError_t Load(
-    util::Parameters &parameters,
-    GraphT &graph,
-    std::string graph_prefix = "")
-{
-    typedef graph::Coo<typename GraphT::VertexT,
-        typename GraphT::SizeT,
-        typename GraphT::ValueT,
-        GraphT::FLAG | graph::HAS_COO, GraphT::cudaHostRegisterFlag> CooT;
+struct CooSwitch<GraphT, false> {
+  static cudaError_t Load(util::Parameters &parameters, GraphT &graph,
+                          std::string graph_prefix = "") {
+    typedef graph::Coo<typename GraphT::VertexT, typename GraphT::SizeT,
+                       typename GraphT::ValueT, GraphT::FLAG | graph::HAS_COO,
+                       GraphT::cudaHostRegisterFlag>
+        CooT;
     cudaError_t retval = cudaSuccess;
+
+    bool grmat = parameters.Get<bool>("grmat");
+    util::Location target = util::HOST;
+    // if (grmat)
+    //   target = util::DEVICE;
 
     CooT coo;
     GUARD_CU(Build(parameters, coo, graph_prefix));
@@ -428,36 +485,35 @@ static cudaError_t Load(
     if (remove_self_loops && remove_duplicate_edges)
     {
         GUARD_CU(coo.RemoveSelfLoops_DuplicateEdges(
-            gunrock::graph::BY_ROW_ASCENDING, util::HOST, 0, quiet));
+            gunrock::graph::BY_ROW_ASCENDING, target, 0, quiet));
     } else if (remove_self_loops)
     {
         GUARD_CU(coo.RemoveSelfLoops(
-            gunrock::graph::BY_ROW_ASCENDING, util::HOST, 0, quiet));
+            gunrock::graph::BY_ROW_ASCENDING, target, 0, quiet));
     } else if (remove_duplicate_edges)
     {
         GUARD_CU(coo.RemoveDuplicateEdges(
-            gunrock::graph::BY_ROW_ASCENDING, util::HOST, 0, quiet));
+            gunrock::graph::BY_ROW_ASCENDING, target, 0, quiet));
     }
 
-    GUARD_CU(graph.FromCoo(coo, util::HOST, 0, quiet, false));
+    // TODO: undirected graph generation Issue# 592
+
+    GUARD_CU(graph.FromCoo(coo, target, 0, quiet, false));
     GUARD_CU(coo.Release());
     return retval;
-}
+  }
 };
 
 template <typename GraphT>
-cudaError_t Load(
-    util::Parameters &parameters,
-    GraphT &graph_,
-    std::string graph_prefix = "")
-{
-    return CooSwitch<GraphT, (GraphT::FLAG & gunrock::graph::HAS_COO) != 0>
-        ::Load(parameters, graph_, graph_prefix);
+cudaError_t Load(util::Parameters &parameters, GraphT &graph_,
+                 std::string graph_prefix = "") {
+  return CooSwitch<GraphT, (GraphT::FLAG & gunrock::graph::HAS_COO) != 0>::Load(
+      parameters, graph_, graph_prefix);
 }
 
-} // namespace rmat
-} // namespace graphio
-} // namespace gunrock
+}  // namespace rmat
+}  // namespace graphio
+}  // namespace gunrock
 
 // Leave this at the end of the file
 // Local Variables:

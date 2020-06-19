@@ -1,11 +1,11 @@
 project(gunrock)
 
 set(gunrock_VERSION_MAJOR 1)
-set(gunrock_VERSION_MINOR 0)
+set(gunrock_VERSION_MINOR 1)
 set(gunrock_VERSION_PATCH 0)
 add_definitions("-DGUNROCKVERSION=${gunrock_VERSION_MAJOR}.${gunrock_VERSION_MINOR}.${gunrock_VERSION_PATCH}")
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 # enable @rpath in the install name for any shared library being built
 # note: it is planned that a future version of CMake will enable this by default
@@ -15,23 +15,29 @@ set(CMAKE_MACOSX_RPATH 1)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure)
 # end /* Added make check target to improve ctest command */
 
-# begin /* Suppress "deprecated auto_ptr" warnings caused by moderngpu */
-option(WARNING_DEP_FLAG "Deprecated declarations warning flag." OFF)
-if (WARNING_DEP_FLAG)
-  # moderngpu will give auto_ptr warning.
-else (WARNING_DEP_FLAG)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
-  add_definitions ("-Wno-deprecated-declarations")
-endif (WARNING_DEP_FLAG)
-# end /* Suppress "deprecated auto_ptr" warnings caused by moderngpu */
+# begin /* Dependencies directory */
+set(PROJECT_DEPS_DIR externals)
+# end /* Dependencies directory */
 
+# begin /* Suppress all warnings from gcc */
+option(ENABLE_WARNINGS "Deprecated declarations warning flag." OFF)
+if (ENABLE_WARNINGS)
+  # moderngpu will give auto_ptr warning.
+else (ENABLE_WARNINGS)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
+  add_definitions ("-w")
+endif (ENABLE_WARNINGS)
+# end /* Suppress all warnings from gcc */
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11 -fPIC")
 
 option(CMAKE_VERBOSE_MAKEFILE OFF)
 
 # begin /* Find and set CUDA arch */
-set(gunrock_REQUIRED_CUDA_VERSION 7.5)
+set(gunrock_REQUIRED_CUDA_VERSION 9.0)
 FIND_PACKAGE(CUDA ${gunrock_REQUIRED_CUDA_VERSION} REQUIRED)
 # /* enables relocatable device code linking */
 SET(CUDA_SEPARABLE_COMPILATION ON)
@@ -45,11 +51,6 @@ endif()
 # begin /* Include Boost, OpenMP & Metis */
 include(${CMAKE_SOURCE_DIR}/cmake/FindBoostHeaders.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/FindBoost.cmake)
-
-if(${CUDA_VERSION} EQUAL "8.0" AND ${Boost_VERSION} EQUAL "106400")
-  message(FATAL_ERROR "Boost 1.64 is not compatible with CUDA 8.0 due to a bug in CUDA, this is resolved in CUDA 9. Please either use Boost 1.58 or upgrade CUDA to 9.0.")
-endif()
-
 include(${CMAKE_SOURCE_DIR}/cmake/FindOpenMP.cmake)
 if (METIS_LIBRARY)
   include(${CMAKE_SOURCE_DIR}/cmake/FindMetis.cmake)
@@ -80,14 +81,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/FindCUB.cmake)
 option(GUNROCK_GOOGLE_TESTS "Use Googletest as testing framework (default: OFF)." OFF)
 
 if (GUNROCK_GOOGLE_TESTS)
-include(${CMAKE_SOURCE_DIR}/cmake/DownloadProject/DownloadProject.cmake)
-download_project(
-    PROJ googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG master
-    UPDATE_DISCONNECTED 1
-)
-add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+  include(${CMAKE_SOURCE_DIR}/cmake/FindGoogleTest.cmake)
 endif (GUNROCK_GOOGLE_TESTS)
 # end /* Include googletest & googlemock */
 
@@ -272,7 +266,7 @@ endif ()
 if (CUDA_VERSION VERSION_EQUAL "9.0" OR CUDA_VERSION VERSION_GREATER "9.0")
   option(GUNROCK_GENCODE_SM70
     "ON to generate code for Compute Capability 7.0 devices (e.g. Volta V100)"
-    ON)
+    OFF)
   option(GUNROCK_GENCODE_SM72
     "ON to generate code for Compute Capability 7.2 devices (e.g. Jetson AGX Xavier)"
     OFF)
@@ -285,9 +279,18 @@ if (CUDA_VERSION VERSION_EQUAL "10.0" OR CUDA_VERSION VERSION_GREATER "10.0")
     OFF)
 endif ()
 
+option (CUDA_AUTODETECT_GENCODE
+  "On to enable autodetection of appropriate gencode=X options for each detected device"
+  ON)
+
 option(CUDA_VERBOSE_PTXAS
   "On to enable verbose output from the PTXAS assembler."
   OFF)
+
+if (CUDA_AUTODETECT_GENCODE)
+  include(${CMAKE_SOURCE_DIR}/cmake/AutoDetectCudaArch.cmake)
+  set(GENCODE ${GENCODE} ${CUDA_ARCHS})
+endif ()
 
 if (GUNROCK_GENCODE_SM10)
   set(GENCODE ${GENCODE} ${GENCODE_SM10})
@@ -341,6 +344,11 @@ if (GUNROCK_GENCODE_SM75)
   set(GENCODE ${GENCODE} ${GENCODE_SM75})
 endif(GUNROCK_GENCODE_SM75)
 
+message(STATUS "Listing chosen GENCODE commands")
+foreach(code IN LISTS GENCODE)
+    message(STATUS "${code}")
+endforeach() 
+
 if (CUDA_VERBOSE_PTXAS)
   set(VERBOSE_PTXAS --ptxas-options=-v)
 endif (CUDA_VERBOSE_PTXAS)
@@ -350,6 +358,12 @@ endif (CUDA_VERBOSE_PTXAS)
 # Already set above. Causes build error on Ubuntu 18.04.1 LTS
 set(CUDA_NVCC_FLAGS --expt-extended-lambda -rdc=true -lcudadevrt)
 set(CUDA_LIBRARIES ${CUDA_LIBRARIES} ${CUDA_curand_LIBRARY})
+
+# begin /* Suppress all warnings from nvcc */
+if (NOT ENABLE_WARNINGS)
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -w")
+endif (NOT ENABLE_WARNINGS)
+# end /* Suppress all warnings from nvcc */
 
 if(GUNROCK_BUILD_LIB)
   if(GUNROCK_BUILD_SHARED_LIBS)

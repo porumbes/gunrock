@@ -384,6 +384,60 @@ double color(
           int       *colors,
           int        num_colors);
 
+
+/*
+ * @brief Subgraph Matching simple public interface.
+ *
+ * @param[in]  num_nodes         Number of vertices in the input data graph
+ * @param[in]  num_edges         Number of edges in the input data  graph
+ * @param[in]  row_offsets       CSR-formatted data graph input row offsets
+ * @param[in]  col_indices       CSR-formatted data graph input column indices
+ * @param[in]  num_query_nodes   Number of vertices in the input query graph
+ * @param[in]  num_query_edges   Number of edges in the input query graph
+ * @param[in]  query_row_offsets CSR-formatted query graph input row offsets
+ * @param[in]  query_col_indices CSR-formatted query graph input column indices
+ * @param[in]  num_runs          Number of runs to perform SM
+ * @param[out] subgraphs         Return number of subgraphs
+ * @param[out] list_subgraphs    Return list of subgraphs
+ * @param[in]  device            Target device to store inputs and outputs
+ * \return     double            Return accumulated elapsed times for all runs
+ */
+double sm(
+    const int            num_nodes,
+    const int            num_edges,
+    const int           *row_offsets,
+    const int           *col_indices,
+    const int            num_query_nodes,
+    const int            num_query_edges,
+    const int           *query_row_offsets,
+    const int           *query_col_indices,
+    const int            num_runs,
+    unsigned long       *subgraphs,
+    unsigned long       *list_subgraphs,
+    unsigned int         device
+);
+
+ /*
+ * @brief HITS simple public interface.
+ *
+ * @param[in]  num_nodes   Number of vertices in the input graph
+ * @param[in]  num_edges   Number of edges in the input graph
+ * @param[in]  row_offsets CSR-formatted graph input row offsets
+ * @param[in]  col_indices CSR-formatted graph input column indices
+ * @param[in]  num_iter    Number of iterations to perform HITS
+ * @param[out] hub_ranks   Vertex hub scores
+ * @param[out] auth ranks  Vertex authority scores
+ * \return     double      Elapsed run time in milliseconds
+ */
+double hits(
+    const int            num_nodes,
+    const int            num_edges,
+    const int           *row_offsets,
+    const int           *col_indices, 
+    const int            num_iter,
+    float               *hub_ranks,
+    float               *auth_ranks);     
+
 #ifdef __cplusplus
 }
 #endif

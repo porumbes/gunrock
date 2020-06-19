@@ -20,7 +20,7 @@ namespace gunrock {
 namespace oprtr {
 namespace compacted_cull_filter {
 
-template <typename _Problem, int _CUDA_ARCH, int _MAX_CTA_OCCUPANCY,
+template <typename _Problem, int _MAX_CTA_OCCUPANCY,
           int _LOG_THREADS, int _LOG_GLOBAL_LOAD_SIZE, int _MODE>
 struct KernelPolicy {
   typedef _Problem Problem;
@@ -30,7 +30,6 @@ struct KernelPolicy {
 
   enum {
     MODE = _MODE,
-    CUDA_ARCH = _CUDA_ARCH,
     LOG_THREADS = _LOG_THREADS,
     THREADS = 1 << LOG_THREADS,
     MAX_BLOCKS = 1024,
@@ -47,7 +46,7 @@ struct KernelPolicy {
     WARP_HASH_LENGTH = 1 << WARP_HASH_BITS,
     WARP_HASH_MASK = WARP_HASH_LENGTH - 1,
     WARPS = THREADS / WARP_SIZE,
-    //ELEMENT_ID_MASK = ~(1ULL << (sizeof(VertexId) * 8 - 2)),
+    // ELEMENT_ID_MASK = ~(1ULL << (sizeof(VertexId) * 8 - 2)),
     MAX_CTA_OCCUPANCY = _MAX_CTA_OCCUPANCY,
   };
 
@@ -79,10 +78,10 @@ struct KernelPolicy {
   };
 
   enum {
-    THREAD_OCCUPANCY = GR_SM_THREADS(CUDA_ARCH) >> LOG_THREADS,
-    SMEM_OCCUPANCY = GR_SMEM_BYTES(CUDA_ARCH) / sizeof(SmemStorage),
+    THREAD_OCCUPANCY = GR_SM_THREADS(GR_CUDA_ARCH) >> LOG_THREADS,
+    SMEM_OCCUPANCY = GR_SMEM_BYTES(GR_CUDA_ARCH) / sizeof(SmemStorage),
     CTA_OCCUPANCY = GR_MIN(MAX_CTA_OCCUPANCY,
-                           GR_MIN(GR_SM_CTAS(CUDA_ARCH),
+                           GR_MIN(GR_SM_CTAS(GR_CUDA_ARCH),
                                   GR_MIN(THREAD_OCCUPANCY, SMEM_OCCUPANCY))),
     VALID = (CTA_OCCUPANCY > 0),
   };
