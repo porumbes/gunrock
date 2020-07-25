@@ -105,6 +105,143 @@ cudaError_t MakeUndirected(GraphT &directed_graph, GraphT &undirected_graph,
   return retval;
 }
 
+// SDP TODO consider adding conversion to CSR for non-CSR inputs
+/**
+ * @brief Remove zero degree nodes
+ *
+ * @param graph A GraphT that HAS_CSR
+ * @param quiet true to disable non-error messages
+ *
+ * \return cudaSuccess or error with specific cudaError_t
+ */
+template <typename GraphT>
+cudaError_t RemoveDegreeZeroNodes(GraphT &graph, bool quiet = false) {
+
+  using VertexT = typename GraphT::VertexT;
+  using SizeT = typename GraphT::SizeT;
+  using ValueT = typename GraphT::ValueT;
+  const graph::GraphFlag FLAG = GraphT::FLAG;
+  using CsrT = graph::Csr<VertexT, SizeT, ValueT,
+                     (FLAG & (~graph::TypeMask)) | graph::HAS_CSR>;         
+  // CsrT csr;
+
+  auto nodes = graph.nodes;
+  auto edges = graph.edges;
+
+  int *marker = new int[nodes];
+  memset(marker, 0, sizeof(int) * nodes);
+  auto& column_indices = graph.column_indices;
+  auto& row_offsets = graph.row_offsets;
+  SizeT *displacements = new SizeT[nodes];
+  SizeT *new_offsets = new SizeT[nodes + 1];
+  SizeT *block_offsets = nullptr;
+  VertexT *new_nodes = new VertexT[nodes];
+  ValueT *new_values = new ValueT[nodes];
+  auto& values = graph.node_values;
+  int num_threads = 0;
+
+#pragma omp parallel
+  {
+    num_threads = omp_get_num_threads();
+    int thread_num = omp_get_thread_num();
+    SizeT edge_start = (long long)(edges)*thread_num / num_threads;
+    SizeT edge_end = (long long)(edges) * (thread_num + 1) / num_threads;
+    SizeT node_start = (long long)(nodes)*thread_num / num_threads;
+    SizeT node_end = (long long)(nodes) * (thread_num + 1) / num_threads;
+
+    for (SizeT edge = edge_start; edge < edge_end; edge++) {
+      marker[column_indices[edge]] = 1;
+    }
+
+    for (VertexT node = node_start; node < node_end; node++) {
+      if (row_offsets[node] != row_offsets[node + 1]) 
+        marker[node] = 1;
+    }
+
+    if (thread_num == 0) 
+      block_offsets = new SizeT[num_threads + 1];
+
+#pragma omp barrier
+
+    if (node_end > node_start) 
+      displacements[node_start] = 0;
+
+    for (VertexT node = node_start; node < node_end - 1; node++) {
+      displacements[node + 1] = displacements[node] + 1 - marker[node];
+    }
+
+#pragma omp barrier
+    if (node_end != 0)
+      block_offsets[thread_num + 1] = displacements[node_end - 1] + 1 - marker[node_end - 1];
+    else
+      block_offsets[thread_num + 1] = 1 - marker[0];
+
+#pragma omp barrier
+#pragma omp single
+    {
+      block_offsets[0] = 0;
+      for (int i = 0; i < num_threads; i++)
+        block_offsets[i + 1] += block_offsets[i];
+    }
+
+    for (VertexT node = node_start; node < node_end; node++) {
+      if (marker[node] == 0) 
+        continue;
+      
+      VertexT node_ = node - block_offsets[thread_num] - displacements[node];
+      // printf("thread_num = %d, node = %d, block_offsets[] = %d,
+      // displacements[] = %d, node_ = %d\n",
+      //    thread_num, node, block_offsets[thread_num], displacements[node],
+      //    node_);
+      new_nodes[node] = node_;
+      new_offsets[node_] = row_offsets[node];
+  
+      if(FLAG & graph::HAS_EDGE_VALUES) {
+        new_values[node_] = values[node];
+      }
+    }
+  }
+
+  for (SizeT edge = 0; edge < edges; edge++) {
+    column_indices[edge] = new_nodes[column_indices[edge]];
+  }
+
+  nodes = nodes - block_offsets[num_threads];
+
+  if (nodes < 0) {
+    printf("Invalid graph error. The number of nodes is negative.\n");
+    exit(1);
+  }
+
+  memcpy(row_offsets.GetPointer(util::HOST), new_offsets, sizeof(SizeT) * (nodes + 1));
+  if(FLAG & graph::HAS_EDGE_VALUES) {
+    memcpy(values.GetPointer(util::HOST), new_values, sizeof(ValueT) * nodes);
+  }
+  
+  if (!quiet) {
+    printf("graph #nodes : %lld -> %lld \n", (long long)graph.nodes,
+           (long long)nodes);
+  }
+  graph.nodes = nodes;
+  row_offsets[nodes] = graph.edges;
+
+  delete[] new_offsets;
+  new_offsets = nullptr;
+  delete[] new_values;
+  new_values = nullptr;
+  delete[] new_nodes;
+  new_nodes = nullptr;
+  delete[] marker;
+  marker = nullptr;
+  delete[] displacements;
+  displacements = nullptr;
+  delete[] block_offsets;
+  block_offsets = nullptr;
+
+  return cudaSuccess;
+}
+
+
 }  // namespace graphio
 }  // namespace gunrock
 

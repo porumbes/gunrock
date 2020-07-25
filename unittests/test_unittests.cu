@@ -37,7 +37,7 @@
 #include "test_lib_sm.h"
 
 // Tests the RepeatFor Operator
- #include "test_repeatfor.h"
+#include "test_repeatfor.h"
 
 // Tests Segmented Reduction (device)
 #include "test_segreduce.h"
@@ -46,6 +46,8 @@
 #include "test_binarysearch.h"
 
 #include "test_pointer_location.h"
+
+#include "test_remove_degree_zero_nodes.h"
 
 using namespace gunrock;
 
