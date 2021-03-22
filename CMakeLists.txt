@@ -159,6 +159,8 @@ set(GENCODE_SM75
   -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_75,code=compute_75)
 set(GENCODE_SM80
   -gencode=arch=compute_80,code=sm_80 -gencode=arch=compute_80,code=compute_80)
+set(GENCODE_SM86
+  -gencode=arch=compute_86,code=sm_86 -gencode=arch=compute_86,code=compute_86)
 
 #set(GENCODE -gencode=arch=compute_10,code=compute_10) # at least generate PTX
 # end /* SET GENCODE_SM */
@@ -302,7 +304,10 @@ endif ()
 #Ampere Architecture: CUDA 11
 if (CUDA_VERSION VERSION_EQUAL "11.0" OR CUDA_VERSION VERSION_GREATER "11.0")
   option(GUNROCK_GENCODE_SM80
-    "ON to generate code for Compute Capability 8.0 devices"
+    "ON to generate code for Compute Capability 8.0 devices (DGX-A100)"
+    OFF)
+  option(GUNROCK_GENCODE_SM86
+    "ON to generate code for Compute Capability 8.6 devices (RTX Ampere 3080, 3090, Tesla GA10x)"
     OFF)
 endif ()
 
